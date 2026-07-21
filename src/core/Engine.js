@@ -14,11 +14,24 @@ export class Engine {
   }
 
   async init() {
+    // WebXR immersive sessions are far more reliable on the WebGL2 backend today
+    // — in the Quest browser especially, WebGPU-in-XR is still immature and often
+    // starts the session but presents a black frame. So: if this device can
+    // actually enter VR, use the WebGL2 backend (our node materials / TSL sky run
+    // there just the same). A pure desktop with no XR keeps the WebGPU backend.
+    // ?forcegl in the URL forces WebGL2 for testing the exact VR render path.
+    let xrSupported = false;
+    try {
+      xrSupported = !!(navigator.xr && await navigator.xr.isSessionSupported('immersive-vr'));
+    } catch { xrSupported = false; }
+    this.xrSupported = xrSupported;
+    const forceGL = new URLSearchParams(location.search).has('forcegl');
+
     const renderer = new THREE.WebGPURenderer({
       antialias: true,
       powerPreference: 'high-performance',
-      // If WebGPU is missing (older Quest browser), fall back to WebGL2.
-      forceWebGL: !navigator.gpu,
+      // Use WebGL2 when VR is reachable (or WebGPU is unavailable, or forced).
+      forceWebGL: xrSupported || !navigator.gpu || forceGL,
     });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
