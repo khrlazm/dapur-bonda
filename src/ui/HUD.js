@@ -5,11 +5,15 @@ export class HUD {
     this.hud = document.getElementById('hud');
     this.stepCard = document.getElementById('step-card');
     this.toastEl = document.getElementById('toast');
+    this.hubControls = document.getElementById('hub-controls');
     this._toastTimer = null;
     this.worldPanel = null; // in-world 3D panel, mirrored for VR
   }
 
   show() { this.hud.hidden = false; }
+
+  // Show/hide the desktop recipe-menu buttons (◀ Cook ▶).
+  setHubControls(show) { this.hubControls.style.display = show ? 'inline' : 'none'; }
 
   setStep(num, title, instruction) {
     this.stepCard.innerHTML = `

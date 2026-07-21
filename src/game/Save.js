@@ -20,6 +20,16 @@ export const Save = {
     this.save(s);
     return s;
   },
+  // Clear a recipe's per-run step ticks (for a fresh cook) while keeping its
+  // completed flag so unlocks and the menu's ✓ persist.
+  resetSteps(recipeId) {
+    const s = this.load();
+    if (s.recipes[recipeId]) { s.recipes[recipeId].steps = {}; this.save(s); }
+    return s;
+  },
+  isComplete(recipeId) {
+    return !!this.load().recipes[recipeId]?.complete;
+  },
   markRecipeComplete(recipeId) {
     const s = this.load();
     s.recipes[recipeId] = s.recipes[recipeId] || { steps: {}, complete: false };

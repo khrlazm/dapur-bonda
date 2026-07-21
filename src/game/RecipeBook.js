@@ -40,19 +40,28 @@ export class RecipeBook {
     this.turnPage.visible = false;
     this.group.add(this.turnPage);
     this._flip = null;
+    this.menuMode = false;
 
     this.draw({ steps: {} }, 0);
   }
 
-  // Swap to a different recipe's spread (used when a new recipe is unlocked).
+  // Swap to a recipe's cooking spread (the ticking checklist).
   setRecipe(recipe, save = { steps: {} }, index = 0, memory) {
+    this.menuMode = false;
     this.recipe = recipe;
     this.draw(save, index, memory);
   }
 
-  // Animate a page turning over, swapping to the new recipe at the midpoint.
   flipToRecipe(recipe, save = { steps: {} }, index = 0) {
-    this._flip = { t: 0, dur: 1.0, mid: false, recipe, save, index };
+    this.#startFlip(() => this.setRecipe(recipe, save, index));
+  }
+
+  flipToMenu(recipe, status, dir = 1) {
+    this.#startFlip(() => this.drawMenu(recipe, status));
+  }
+
+  #startFlip(onMid) {
+    this._flip = { t: 0, dur: 0.9, mid: false, onMid };
     this.turnPage.visible = true;
     this.turnPage.rotation.y = 0;
   }
@@ -63,8 +72,22 @@ export class RecipeBook {
     f.t += dt;
     const k = Math.min(f.t / f.dur, 1);
     this.turnPage.rotation.y = Math.PI * k; // 0 (over right page) -> PI (over left)
-    if (!f.mid && k >= 0.5) { f.mid = true; this.setRecipe(f.recipe, f.save, f.index); }
+    if (!f.mid && k >= 0.5) { f.mid = true; f.onMid(); }
     if (k >= 1) { this.turnPage.visible = false; this._flip = null; }
+  }
+
+  // Which menu control (if any) a hand is poking. Book-local zones: far-left
+  // strip = previous recipe, far-right strip = next, the rest of the right page
+  // = start cooking. Only active while showing the menu.
+  pokeTest(worldPos) {
+    if (!this.menuMode || this._flip) return null;
+    const p = this.group.worldToLocal(worldPos.clone());
+    if (p.z < -0.16 || p.z > 0.36) return null;      // must be near the page plane
+    if (p.y < -0.24 || p.y > 0.24) return null;
+    if (p.x >= -0.34 && p.x <= -0.20) return 'prev';
+    if (p.x >= 0.20 && p.x <= 0.34) return 'next';
+    if (p.x >= 0.00 && p.x < 0.20) return 'start';
+    return null;
   }
 
   #makePage(x, w, h) {
@@ -193,6 +216,109 @@ export class RecipeBook {
         ctx.font = 'italic 27px Georgia, serif';
         this.#wrap(ctx, memory, 140, y + 34, w - 280, 34);
       }
+      tex.needsUpdate = true;
+    }
+  }
+
+  // The hub's recipe-selection spread. status = { complete, unlocked, index,
+  // total, prevTitle }. One recipe per spread; flip to browse, reach the right
+  // page to begin.
+  drawMenu(recipe, status) {
+    this.menuMode = true;
+    this.recipe = recipe;
+
+    // ---- Left page: the dish + its standing in the season ----
+    {
+      const { ctx, base, tex, canvas } = this.left;
+      ctx.drawImage(base, 0, 0);
+      const w = canvas.width, h = canvas.height;
+      this.#border(ctx, w, h);
+      ctx.textBaseline = 'alphabetic';
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#8a5a1a';
+      ctx.font = 'italic 32px Georgia, serif';
+      ctx.fillText(`Season ${recipe.season} · Episode ${recipe.episode}`, w / 2, 130);
+      ctx.fillStyle = '#5a2f14';
+      ctx.font = 'italic 88px Georgia, serif';
+      ctx.fillText(recipe.title, w / 2, 230);
+
+      // status badge
+      const badge = status.complete ? ['✓  Cooked', '#3d6b2f']
+        : status.unlocked ? ['Ready to cook', '#7a2d2d']
+          : ['🔒  Locked', '#9a7a55'];
+      ctx.fillStyle = badge[1];
+      ctx.font = 'bold 38px Georgia, serif';
+      ctx.fillText(badge[0], w / 2, 300);
+
+      ctx.fillStyle = '#6b4a2a';
+      ctx.font = 'italic 30px Georgia, serif';
+      this.#wrap(ctx, recipe.subtitle, 140, 370, w - 280, 40);
+
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#5a2f14';
+      ctx.font = 'bold 38px Georgia, serif';
+      ctx.fillText('Ingredients', 130, 540);
+      ctx.font = '32px Georgia, serif';
+      let y = 600;
+      for (const ing of recipe.ingredients) {
+        ctx.fillStyle = '#7a2d2d'; ctx.fillText('❦', 130, y);
+        ctx.fillStyle = '#4a2f1a'; ctx.fillText(ing.name, 175, y);
+        y += 66;
+      }
+
+      // ◀ browse-left affordance
+      ctx.fillStyle = 'rgba(90,47,20,0.55)';
+      ctx.font = 'bold 72px Georgia, serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('‹', 96, h / 2 + 24);
+      tex.needsUpdate = true;
+    }
+
+    // ---- Right page: method preview + the "cook" action ----
+    {
+      const { ctx, base, tex, canvas } = this.right;
+      ctx.drawImage(base, 0, 0);
+      const w = canvas.width, h = canvas.height;
+      this.#border(ctx, w, h);
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#5a2f14';
+      ctx.font = 'bold 38px Georgia, serif';
+      ctx.fillText('The Method', 130, 150);
+
+      ctx.font = '30px Georgia, serif';
+      let y = 210;
+      recipe.steps.forEach((s, i) => {
+        ctx.fillStyle = '#8a6b4a'; ctx.fillText(`${i + 1}.`, 130, y);
+        ctx.fillStyle = '#4a2f1a'; ctx.fillText(s.title, 185, y);
+        y += 52;
+      });
+
+      // action seal, lower centre of the right page (the 'start' poke zone)
+      const cx = w * 0.42, cy = 800, r = 150;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.strokeStyle = status.unlocked ? 'rgba(122,45,45,0.7)' : 'rgba(120,100,80,0.5)';
+      ctx.lineWidth = 6; ctx.stroke();
+      ctx.textAlign = 'center';
+      if (status.unlocked) {
+        ctx.fillStyle = '#7a2d2d';
+        ctx.font = 'bold 34px Georgia, serif';
+        ctx.fillText('REACH IN', cx, cy - 6);
+        ctx.fillText('TO COOK', cx, cy + 34);
+      } else {
+        ctx.fillStyle = '#8a6b4a';
+        ctx.font = 'italic 26px Georgia, serif';
+        ctx.fillText('Locked', cx, cy - 24);
+        this.#wrap(ctx, `Finish ${status.prevTitle || 'the previous dish'} first`, cx - 120, cy + 16, 260, 30);
+      }
+
+      // page indicator + ▶ browse-right affordance
+      ctx.fillStyle = '#8a6b4a';
+      ctx.font = 'italic 28px Georgia, serif';
+      ctx.fillText(`${status.index + 1} / ${status.total}`, w / 2, h - 90);
+      ctx.fillStyle = 'rgba(90,47,20,0.55)';
+      ctx.font = 'bold 72px Georgia, serif';
+      ctx.fillText('›', w - 96, h / 2 + 24);
       tex.needsUpdate = true;
     }
   }

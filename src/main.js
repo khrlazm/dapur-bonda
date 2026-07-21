@@ -66,9 +66,15 @@ async function boot() {
     btnAudio.textContent = muted ? '🔇 Sound' : '🔈 Sound';
   });
 
-  document.getElementById('btn-book').addEventListener('click', () => {
-    // nudge the camera target toward the book
-    engine.controls.target.copy(kitchen.anchors.book);
+  // Hub recipe-menu controls (desktop). VR uses the book's poke zones instead.
+  document.getElementById('btn-prev').addEventListener('click', () => sim.browseMenu(-1));
+  document.getElementById('btn-next').addEventListener('click', () => sim.browseMenu(1));
+  document.getElementById('btn-cook').addEventListener('click', () => sim.selectMenu());
+  window.addEventListener('keydown', (e) => {
+    if (sim.mode !== 'hub') return;
+    if (e.key === '[' || e.key === 'ArrowLeft') sim.browseMenu(-1);
+    else if (e.key === ']' || e.key === 'ArrowRight') sim.browseMenu(1);
+    else if (e.key === 'Enter' || e.key === ' ') sim.selectMenu();
   });
 
   // Main loop

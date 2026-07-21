@@ -9,10 +9,11 @@ const EPISODES = {
   'pisang-sira': PisangSira,
 };
 
-// The host runs the whole season. It owns the shared FX (pour + steam), loads
-// the current episode, runs a linear step machine, saves progress, drives the
-// recipe book + HUD, and — when a recipe is finished — unlocks the next one and
-// turns the page to it. No timers, no failure: you move on when the food is ready.
+// The game loop host. It always boots into the HUB (an empty kitchen where the
+// recipe book acts as a menu). Browse the book, choose an unlocked recipe, and
+// it loads that episode's props and runs the step machine. Finishing a recipe
+// unlocks the next, then returns you to the hub. Every scene switch tears the
+// previous episode's props down and resets state.
 export class CookingSim {
   constructor({ engine, kitchen, book, hud, audio, season, save }) {
     this.engine = engine;
@@ -25,28 +26,87 @@ export class CookingSim {
     this.season = season;
     this.save = save;
 
+    this.mode = 'hub';
+    this.episode = null;
     this.progress = 0;
     this.done = false;
     this._locked = false;
+    this._pokeCd = 0;
 
     this.pour = new Pour(this.scene);
     this.steam = new Steam(this.scene, new THREE.Vector3(0, kitchen.counterTopY + 0.1, -0.72), { count: 80 });
-
     this.interaction.onPour = (o, dt, spout) => this.episode?.handlePour?.(o, dt, spout);
 
-    this.#startFromSave();
+    this.enterHub(false, 0);
   }
 
-  #startFromSave() {
-    const s = this.save.load();
-    let idx = 0;
-    for (let i = 0; i < this.season.length; i++) {
-      if (s.recipes[this.season[i].id]?.complete) idx = i + 1; else { idx = i; break; }
+  // ---------- Status / unlock logic ----------
+  #status(i) {
+    const s = this.save.load().recipes;
+    const complete = !!s[this.season[i].id]?.complete;
+    const unlocked = i === 0 || !!s[this.season[i - 1].id]?.complete;
+    return { complete, unlocked, index: i, total: this.season.length, prevTitle: i > 0 ? this.season[i - 1].title : null };
+  }
+
+  // ---------- Hub ----------
+  enterHub(animate, preferredIndex) {
+    this._locked = true;
+    clearTimeout(this._returnTimer);
+    this.episode?.teardown?.();
+    this.episode = null;
+    this.mode = 'hub';
+    this.done = false;
+    this.progress = 0;
+    this.steam.setIntensity(0);
+    this._pokeCd = 0.7;
+
+    this.menuIndex = Math.min(preferredIndex ?? this.menuIndex ?? 0, this.season.length - 1);
+    const recipe = this.season[this.menuIndex];
+    const status = this.#status(this.menuIndex);
+    if (animate) this.book.flipToMenu(recipe, status);
+    else this.book.drawMenu(recipe, status);
+    this.#hubPrompt(recipe, status);
+    this.hud.setHubControls(true);
+    this._locked = false;
+  }
+
+  #hubPrompt(recipe, status) {
+    const msg = status.unlocked
+      ? 'Reach into the right page — or press Cook — to begin. Flip ◀ ▶ to browse the recipes.'
+      : `Locked — finish ${status.prevTitle} first. Flip ◀ ▶ to browse the recipes.`;
+    this.hud.setStep('❦', recipe.title, msg);
+    this.hud.setProgress(0);
+  }
+
+  browseMenu(dir) {
+    if (this.mode !== 'hub' || this._locked || this.book._flip) return;
+    const n = this.season.length;
+    this.menuIndex = (this.menuIndex + dir + n) % n;
+    const recipe = this.season[this.menuIndex];
+    const status = this.#status(this.menuIndex);
+    this.book.flipToMenu(recipe, status, dir);
+    this.#hubPrompt(recipe, status);
+  }
+
+  selectMenu() {
+    if (this.mode !== 'hub' || this._locked || this.book._flip) return;
+    const status = this.#status(this.menuIndex);
+    if (!status.unlocked) {
+      for (const h of this.interaction.hands) this.interaction.pulse(h, 0.4, 40); // "locked" buzz
+      return;
     }
-    this.loadEpisode(Math.min(idx, this.season.length - 1), false);
+    this.startRecipe(this.menuIndex);
   }
 
-  loadEpisode(idx, animateBook) {
+  // ---------- Cooking ----------
+  startRecipe(idx) {
+    this.mode = 'cooking';
+    this.hud.setHubControls(false);
+    this.save.resetSteps(this.season[idx].id); // always a fresh cook
+    this.loadEpisode(idx, { animateBook: true, fresh: true });
+  }
+
+  loadEpisode(idx, { animateBook = false, fresh = false } = {}) {
     this._locked = true;
     this.episode?.teardown?.();
 
@@ -55,30 +115,23 @@ export class CookingSim {
     const Ep = EPISODES[this.recipe.id];
     this.episode = new Ep(this);
     this.episode.build();
-    if (this.episode.center) {
-      this.steam.setOrigin(this.episode.center.clone().setY(this.episode.center.y + 0.08));
-    }
+    if (this.episode.center) this.steam.setOrigin(this.episode.center.clone().setY(this.episode.center.y + 0.08));
 
     const rec = this.save.load().recipes[this.recipe.id];
     let step = 0;
-    if (rec) for (let i = 0; i < this.recipe.steps.length; i++) {
+    if (!fresh && rec) for (let i = 0; i < this.recipe.steps.length; i++) {
       if (rec.steps[this.recipe.steps[i].id]) step = i + 1; else break;
     }
     this.stepIndex = Math.min(step, this.recipe.steps.length - 1);
     this.progress = 0;
-    this.episode.restore?.(rec);
+    this.done = false;
+    if (!fresh) this.episode.restore?.(rec);
 
-    if (animateBook) this.book.flipToRecipe(this.recipe, rec || { steps: {} }, this.stepIndex);
-    else this.book.setRecipe(this.recipe, rec || { steps: {} }, this.stepIndex);
+    const bookSave = fresh ? { steps: {} } : (rec || { steps: {} });
+    if (animateBook) this.book.flipToRecipe(this.recipe, bookSave, this.stepIndex);
+    else this.book.setRecipe(this.recipe, bookSave, this.stepIndex);
 
-    const finished = !!rec?.complete;
-    if (finished && idx === this.season.length - 1) {
-      this.done = true;
-      this.hud.setStep('✓', 'Season complete', this.recipe.closing);
-    } else {
-      this.done = false;
-      this.#enterStep(this.stepIndex);
-    }
+    this.#enterStep(this.stepIndex);
     this._locked = false;
   }
 
@@ -107,27 +160,27 @@ export class CookingSim {
   }
 
   #finishRecipe() {
+    this._locked = true;
+    const wasComplete = this.save.isComplete(this.recipe.id);
     this.save.markRecipeComplete(this.recipe.id);
+    this.hud.setStep('✓', `${this.recipe.title} — done`, this.recipe.closing);
+
     const nextIdx = this.recipeIndex + 1;
-    if (nextIdx < this.season.length) {
-      // Pause on the closing memory, then unlock + turn the page to the next dish.
-      this._locked = true;
-      this.hud.setStep('✓', `${this.recipe.title} — done`, this.recipe.closing);
-      const next = this.season[nextIdx];
-      clearTimeout(this._unlockTimer);
-      this._unlockTimer = setTimeout(() => {
-        this.hud.toast(`New recipe unlocked — ${next.title}`);
-        this.loadEpisode(nextIdx, true);
-      }, 5200);
-    } else {
-      this.done = true;
-      this.hud.setStep('✓', 'Season complete', this.recipe.closing);
+    if (!wasComplete && nextIdx < this.season.length) {
+      this.hud.toast(`New recipe unlocked — ${this.season[nextIdx].title}`);
     }
+    // pause on the closing memory, then return to the hub (showing the next dish)
+    const back = Math.min(nextIdx, this.season.length - 1);
+    clearTimeout(this._returnTimer);
+    this._returnTimer = setTimeout(() => this.enterHub(true, back), 5200);
   }
 
+  // ---------- Per-frame ----------
   update(dt, t) {
     this.pour.update(dt);
     this.steam.update(dt, t);
+
+    if (this.mode === 'hub') { this.#hubUpdate(dt); return; }
     if (this.done || this._locked) return;
 
     const step = this.recipe.steps[this.stepIndex];
@@ -135,5 +188,24 @@ export class CookingSim {
     this.episode.detect(step, dt, t);
     this.hud.setProgress(Math.min(this.progress / step.condition.threshold, 1));
     if (this.progress >= step.condition.threshold) this.#completeStep();
+  }
+
+  // In the hub, poking the book's zones browses recipes or starts cooking.
+  #hubUpdate(dt) {
+    this._pokeCd -= dt;
+    // Desktop selects with the on-screen buttons/keys; only VR pokes the book,
+    // so the mouse cursor sweeping over it can't start a recipe by accident.
+    if (!this.engine.renderer.xr.isPresenting) return;
+    if (this._locked || this.book._flip || this._pokeCd > 0) return;
+    for (const hand of this.interaction.hands) {
+      const action = this.book.pokeTest(hand.worldPos);
+      if (!action) continue;
+      this._pokeCd = 0.55;
+      this.interaction.pulse(hand, 0.3, 25);
+      if (action === 'next') this.browseMenu(1);
+      else if (action === 'prev') this.browseMenu(-1);
+      else if (action === 'start') this.selectMenu();
+      break;
+    }
   }
 }
