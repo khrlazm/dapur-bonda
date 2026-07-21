@@ -26,7 +26,45 @@ export class RecipeBook {
     cover.castShadow = true;
     this.group.add(cover);
 
+    // A single turning page, pinned at the spine (x=0), that sweeps from the
+    // right page over to the left when the book advances to a new recipe.
+    const turnGeo = new THREE.PlaneGeometry(0.32, 0.42);
+    turnGeo.translate(0.16, 0, 0); // pivot at the left (spine) edge
+    this.turnTex = new THREE.CanvasTexture(parchmentCanvas(512, 512));
+    this.turnTex.colorSpace = THREE.SRGBColorSpace;
+    this.turnPage = new THREE.Mesh(
+      turnGeo,
+      new THREE.MeshStandardMaterial({ map: this.turnTex, roughness: 0.85, side: THREE.DoubleSide }),
+    );
+    this.turnPage.position.set(0, 0, 0.006);
+    this.turnPage.visible = false;
+    this.group.add(this.turnPage);
+    this._flip = null;
+
     this.draw({ steps: {} }, 0);
+  }
+
+  // Swap to a different recipe's spread (used when a new recipe is unlocked).
+  setRecipe(recipe, save = { steps: {} }, index = 0, memory) {
+    this.recipe = recipe;
+    this.draw(save, index, memory);
+  }
+
+  // Animate a page turning over, swapping to the new recipe at the midpoint.
+  flipToRecipe(recipe, save = { steps: {} }, index = 0) {
+    this._flip = { t: 0, dur: 1.0, mid: false, recipe, save, index };
+    this.turnPage.visible = true;
+    this.turnPage.rotation.y = 0;
+  }
+
+  update(dt) {
+    const f = this._flip;
+    if (!f) return;
+    f.t += dt;
+    const k = Math.min(f.t / f.dur, 1);
+    this.turnPage.rotation.y = Math.PI * k; // 0 (over right page) -> PI (over left)
+    if (!f.mid && k >= 0.5) { f.mid = true; this.setRecipe(f.recipe, f.save, f.index); }
+    if (k >= 1) { this.turnPage.visible = false; this._flip = null; }
   }
 
   #makePage(x, w, h) {

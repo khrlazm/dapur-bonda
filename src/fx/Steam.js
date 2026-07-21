@@ -40,6 +40,9 @@ export class Steam {
   // 0 = off, 1 = full boil. Ramps smoothly.
   setIntensity(v) { this._target = v; }
 
+  // Move the emitter (episodes cook at different stations).
+  setOrigin(v) { this.origin.copy(v); }
+
   #write() { this.points.geometry.attributes.position.needsUpdate = true; }
 
   update(dt, t) {

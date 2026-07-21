@@ -1,5 +1,6 @@
 import { Engine } from './core/Engine.js';
 import { Interaction } from './core/Interaction.js';
+import { Locomotion } from './core/Locomotion.js';
 import { Kitchen } from './world/Kitchen.js';
 import { Lighting } from './world/Lighting.js';
 import { createSky } from './world/Sky.js';
@@ -10,7 +11,7 @@ import { WorldPanel } from './ui/WorldPanel.js';
 import * as THREE from 'three/webgpu';
 import { Soundscape } from './audio/Soundscape.js';
 import { Save } from './game/Save.js';
-import { pulutKuning } from './game/recipes.js';
+import { season1 } from './game/recipes.js';
 
 const veil = document.getElementById('veil');
 const status = document.getElementById('veil-status');
@@ -30,6 +31,7 @@ async function boot() {
   // Systems
   const interaction = new Interaction(engine);
   engine.interaction = interaction;
+  const locomotion = new Locomotion(engine); // VR: left stick = move, right = snap turn
 
   const hud = new HUD();
   const audio = new Soundscape();
@@ -44,9 +46,9 @@ async function boot() {
     worldPanel.setVisible(presenting);
   };
 
-  const book = new RecipeBook(engine.scene, kitchen.anchors.book, pulutKuning);
+  const book = new RecipeBook(engine.scene, kitchen.anchors.book, season1[0]);
 
-  const sim = new CookingSim({ engine, kitchen, book, hud, audio, recipe: pulutKuning, save: Save });
+  const sim = new CookingSim({ engine, kitchen, book, hud, audio, season: season1, save: Save });
 
   // HUD buttons
   engine.mountVRButton('xr-slot');
@@ -74,7 +76,9 @@ async function boot() {
     lighting.update(t);
     kitchen.update(t);
     interaction.update(dt, frame);
+    locomotion.update(dt);
     sim.update(dt, t);
+    book.update(dt);
     worldPanel.update(t);
   });
   engine.start();

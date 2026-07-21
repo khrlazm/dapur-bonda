@@ -70,9 +70,13 @@ export class Liquid {
   constructor(parent, { radius = 0.09, color = 0xbfe0ef, maxY = 0.06 } = {}) {
     this.max = maxY;
     this.fill = 0;
-    this.material = new THREE.MeshPhysicalMaterial({
-      color, roughness: 0.15, metalness: 0, transmission: 0.2,
-      transparent: true, opacity: 0.9, clearcoat: 0.5,
+    // Plain translucent standard material — NOT MeshPhysicalMaterial with
+    // transmission, which relies on a screen-space pass the WebGL2 backend (used
+    // in VR) doesn't run and so renders solid black. Coconut milk is opaque cream
+    // anyway; the wash water just needs a little transparency.
+    this.material = new THREE.MeshStandardMaterial({
+      color, roughness: 0.35, metalness: 0.0,
+      transparent: true, opacity: 0.9,
     });
     this.mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius * 0.92, 0.001, 28), this.material);
     this.mesh.position.y = 0.006;

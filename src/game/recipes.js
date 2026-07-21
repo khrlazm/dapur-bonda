@@ -63,4 +63,68 @@ export const pulutKuning = {
     '“You made Pulut Kuning the way I did, and my mother before me. Keep the recipe. Keep the people who taught it to you.” — Bonda',
 };
 
-export const season1 = [pulutKuning];
+// Season One, Episode Two: Sira Pisang — bananas simmered in fragrant gula
+// melaka syrup. A humble, nostalgic dessert. Reuses the same physical verbs
+// (place, pour, stir, glaze, plate) at the same worktop station.
+export const pisangSira = {
+  id: 'pisang-sira',
+  title: 'Sira Pisang',
+  subtitle: 'Ripe bananas glazed in fragrant gula melaka syrup — humble and comforting.',
+  season: 1,
+  episode: 2,
+  ingredients: [
+    { id: 'banana', name: 'Ripe bananas', note: 'pisang awak, halved' },
+    { id: 'gula', name: 'Gula melaka', note: '2 tbsp, chopped' },
+    { id: 'sugar', name: 'Sugar', note: '½ cup' },
+    { id: 'pandan', name: 'Pandan leaf', note: '1, knotted' },
+    { id: 'salt', name: 'Salt', note: 'a pinch' },
+  ],
+  steps: [
+    {
+      id: 'prepare',
+      title: 'Prepare the bananas',
+      instruction: 'Take the bananas and lay them on the board.',
+      condition: { type: 'PLACE', threshold: 1 },
+      memory: '“Choose them ripe, with freckled skins. Bonda pressed each one with her thumb.”',
+    },
+    {
+      id: 'syrup',
+      title: 'Make the syrup',
+      instruction: 'Pour the gula melaka and water into the pan until it bubbles.',
+      condition: { type: 'POUR', threshold: 1 },
+      memory: '“Gula melaka — the smell of it melting could call the whole kampung to the door.”',
+    },
+    {
+      id: 'add',
+      title: 'Add the bananas',
+      instruction: 'Gently place the bananas into the syrup.',
+      condition: { type: 'PLACE', threshold: 1 },
+      memory: '“Lay them in gently. Never drop — you will bruise them and break the sweetness.”',
+    },
+    {
+      id: 'simmer',
+      title: 'Simmer gently',
+      instruction: 'Stir slowly with the spoon and let the syrup thicken.',
+      condition: { type: 'STIR', threshold: 5 },
+      memory: '“Low fire, slow hand. Rushing sugar only burns it — like rushing anything.”',
+    },
+    {
+      id: 'glaze',
+      title: 'Coat and glaze',
+      instruction: 'Spoon the glossy syrup over the bananas until they shine.',
+      condition: { type: 'GLAZE', threshold: 6 },
+      memory: '“See them turn golden and glossy? That shine is the whole reward.”',
+    },
+    {
+      id: 'serve',
+      title: 'Serve',
+      instruction: 'Plate the sira pisang, warm and glistening.',
+      condition: { type: 'PLATE', threshold: 1 },
+      memory: '“Warm, sweet, and shared after Maghrib. This was how the day was put to rest.”',
+    },
+  ],
+  closing:
+    '“Sweet things need patience most of all. You have a steady hand now, child. I am glad.” — Bonda',
+};
+
+export const season1 = [pulutKuning, pisangSira];

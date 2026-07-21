@@ -42,6 +42,16 @@ export class Interaction {
     return object;
   }
 
+  // Remove a grabbable (used when an episode tears down its props). Drops it
+  // first if a hand is holding it.
+  unregister(object) {
+    for (const hand of this.hands) {
+      if (hand.held === object) { hand.held = null; object.userData._heldBy = null; }
+    }
+    const i = this.grabbables.indexOf(object);
+    if (i >= 0) this.grabbables.splice(i, 1);
+  }
+
   // ---- Desktop pointer hand -------------------------------------------------
   #setupDesktop() {
     const hand = this.#makeHand('desktop');
