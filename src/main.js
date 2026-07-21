@@ -6,6 +6,8 @@ import { createSky } from './world/Sky.js';
 import { RecipeBook } from './game/RecipeBook.js';
 import { CookingSim } from './game/CookingSim.js';
 import { HUD } from './ui/HUD.js';
+import { WorldPanel } from './ui/WorldPanel.js';
+import * as THREE from 'three/webgpu';
 import { Soundscape } from './audio/Soundscape.js';
 import { Save } from './game/Save.js';
 import { pulutKuning } from './game/recipes.js';
@@ -28,10 +30,19 @@ async function boot() {
   // Systems
   const interaction = new Interaction(engine);
   engine.interaction = interaction;
-  engine.dispatchXR = (presenting) => interaction.onSessionChange(presenting);
 
   const hud = new HUD();
   const audio = new Soundscape();
+
+  // In-world instruction card for VR (the DOM HUD can't show in an immersive
+  // session). Created before the sim so the first step reaches it; shown only
+  // while presenting in VR.
+  const worldPanel = new WorldPanel(engine.scene, new THREE.Vector3(0.2, 1.48, -1.16));
+  hud.worldPanel = worldPanel;
+  engine.dispatchXR = (presenting) => {
+    interaction.onSessionChange(presenting);
+    worldPanel.setVisible(presenting);
+  };
 
   const book = new RecipeBook(engine.scene, kitchen.anchors.book, pulutKuning);
 
@@ -64,6 +75,7 @@ async function boot() {
     kitchen.update(t);
     interaction.update(dt, frame);
     sim.update(dt, t);
+    worldPanel.update(t);
   });
   engine.start();
 

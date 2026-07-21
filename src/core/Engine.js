@@ -37,8 +37,9 @@ export class Engine {
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Shadows disabled: the extra depth pass is the single biggest cost on a
+    // Quest, and the warm lighting reads fine without them.
+    renderer.shadowMap.enabled = false;
     renderer.xr.enabled = true;
     // The WebGPU XR manager may not expose setReferenceSpaceType; it defaults to
     // 'local-floor'. Call it only when present so both backends are happy.
@@ -59,7 +60,9 @@ export class Engine {
     scene.add(rig);
     this.rig = rig;
 
-    const camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.05, 100);
+    // Near plane at 1cm so controllers/hands don't clip out when brought close
+    // to the face or body in VR.
+    const camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.01, 100);
     camera.position.set(0, 1.68, 0.62);
     rig.add(camera);
     this.camera = camera;

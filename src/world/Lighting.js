@@ -20,14 +20,7 @@ export class Lighting {
     const sun = new THREE.DirectionalLight(0xffd28a, 2.4);
     sun.position.set(-3.2, 2.6, -1.4);
     sun.target.position.set(0.3, 0.9, -0.8);
-    sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024);
-    sun.shadow.camera.near = 0.5;
-    sun.shadow.camera.far = 12;
-    sun.shadow.camera.left = -4; sun.shadow.camera.right = 4;
-    sun.shadow.camera.top = 4; sun.shadow.camera.bottom = -4;
-    sun.shadow.bias = -0.0006;
-    sun.shadow.normalBias = 0.02;
+    sun.castShadow = false; // shadows are off for Quest performance
     scene.add(sun);
     scene.add(sun.target);
     this.sun = sun;

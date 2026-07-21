@@ -6,6 +6,7 @@ export class HUD {
     this.stepCard = document.getElementById('step-card');
     this.toastEl = document.getElementById('toast');
     this._toastTimer = null;
+    this.worldPanel = null; // in-world 3D panel, mirrored for VR
   }
 
   show() { this.hud.hidden = false; }
@@ -18,10 +19,12 @@ export class HUD {
         <div id="progbar" style="height:100%;width:0%;background:linear-gradient(90deg,#b08d3f,#e0b45a);transition:width .2s"></div>
       </div>`;
     this.progbar = document.getElementById('progbar');
+    this.worldPanel?.setStep(num, title, instruction);
   }
 
   setProgress(f) {
     if (this.progbar) this.progbar.style.width = `${Math.round(f * 100)}%`;
+    this.worldPanel?.setProgress(f);
   }
 
   toast(text) {
@@ -29,5 +32,6 @@ export class HUD {
     this.toastEl.classList.add('show');
     clearTimeout(this._toastTimer);
     this._toastTimer = setTimeout(() => this.toastEl.classList.remove('show'), 5200);
+    this.worldPanel?.toast(text);
   }
 }
