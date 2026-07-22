@@ -131,6 +131,20 @@ export class CookingSim {
       this.hud.setProgress(0);
       this.hud.setHubNav?.(index > 0, index < total - 1);
     }
+    const section = memPage >= 0 ? 'memories' : (this.season[index].comingSoon ? 'soon' : 'recipes');
+    this.book.setActiveTab(section);
+  }
+
+  // Jump straight to a section via the book's side tabs.
+  jumpToSection(id) {
+    if (this.mode !== 'hub' || this._locked || this.book._flip) return;
+    let target = null;
+    if (id === 'recipes') target = 0;
+    else if (id === 'soon') target = this.season.findIndex((r) => r.comingSoon);
+    else if (id === 'memories') target = this.season.length;
+    if (target === null || target < 0 || target === this.menuIndex) return;
+    clearTimeout(this._memIntroTimer); // manual navigation supersedes the reveal
+    this.#showPage(target, { flip: true, dir: target > this.menuIndex ? 1 : -1 });
   }
 
   #hubPrompt(recipe, status) {
@@ -309,6 +323,8 @@ export class CookingSim {
     if (!this.engine.renderer.xr.isPresenting) return;
     if (this._locked || this.book._flip || this._pokeCd > 0) return;
     for (const hand of this.interaction.hands) {
+      const tab = this.book.tabPokeTest(hand.worldPos);
+      if (tab) { this._pokeCd = 0.55; this.interaction.pulse(hand, 0.3, 25); this.jumpToSection(tab); return; }
       const action = this.book.pokeTest(hand.worldPos);
       if (!action) continue;
       this._pokeCd = 0.55;

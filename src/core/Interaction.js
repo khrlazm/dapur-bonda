@@ -16,6 +16,8 @@ export class Interaction {
 
     this.grabbables = [];        // Object3D[] tagged with userData.grab
     this.inspectables = [];      // story objects: touch/click fires onGrab, never held
+    this.tabTargets = [];        // book index-tab meshes (userData.tabId)
+    this.onTabPick = null;       // (id) => void — desktop tab click
     this.isHub = () => true;     // set by main; inspection is hub-only
     this.hands = [];             // active Hand[] (desktop: 1, VR: 2)
     this.grabRadius = 0.16;
@@ -94,8 +96,8 @@ export class Interaction {
       if (e.button !== 0) return; // left button = reach & grab
       setPointer(e);
       this._lastY = e.clientY;
-      // Story objects first: click anywhere on one (walls included, beyond the
-      // worktop hand's reach) reveals its memory instead of grabbing.
+      // Book index tabs first, then story objects, then grabbing.
+      if (this.#tryTabRay()) return;
       if (this.#tryInspectRay(hand)) return;
       this.#tryGrab(hand);
     });
@@ -160,6 +162,18 @@ export class Interaction {
     } else {
       this.hands = [this.desktopHand];
     }
+  }
+
+  // Desktop: camera-ray pick against the book's index tabs (hub only).
+  #tryTabRay() {
+    if (!this.isHub() || this.tabTargets.length === 0) return false;
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+    const hits = this.raycaster.intersectObjects(this.tabTargets, false);
+    const id = hits.length && hits[0].object.visible && hits[0].object.parent?.visible
+      ? hits[0].object.userData.tabId : null;
+    if (!id) return false;
+    this.onTabPick?.(id);
+    return true;
   }
 
   // Desktop: camera-ray pick against inspectables (hub only).

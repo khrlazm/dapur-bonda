@@ -66,6 +66,9 @@ async function boot() {
   // Explorable hub: story objects scattered through the kitchen. Inspection is
   // hub-only so glimmers and memory toasts never interrupt cooking.
   interaction.isHub = () => sim.mode === 'hub';
+  // Book index tabs (desktop click; VR poke is handled in the sim's hub update).
+  interaction.tabTargets = book.tabMeshes;
+  interaction.onTabPick = (id) => sim.jumpToSection(id);
   const hubStories = new HubStories({ scene: engine.scene, kitchen, interaction, hud, audio, save: Save, sim });
 
   // HUD buttons

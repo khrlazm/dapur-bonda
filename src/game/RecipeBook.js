@@ -52,6 +52,16 @@ export class RecipeBook {
     this.group.add(this.ribbon);
     this._unread = 0;
 
+    // Index tabs on the right fore-edge for quick section jumps (hub only).
+    this.tabGroup = new THREE.Group();
+    this.tabGroup.visible = false;
+    this.group.add(this.tabGroup);
+    this.tabs = [];
+    this.#makeTab('recipes', 'Recipes', '#8a5a34', 0.12);
+    this.#makeTab('soon', 'Soon', '#9a8560', 0.0);
+    this.#makeTab('memories', 'Memories', '#a33030', -0.12);
+    this.tabMeshes = this.tabs.map((t) => t.mesh);
+
     this.draw({ steps: {} }, 0);
   }
 
@@ -61,6 +71,7 @@ export class RecipeBook {
   // Swap to a recipe's cooking spread (the ticking checklist).
   setRecipe(recipe, save = { steps: {} }, index = 0, memory) {
     this.menuMode = false;
+    this.tabGroup.visible = false;
     this.recipe = recipe;
     this.draw(save, index, memory);
   }
@@ -78,6 +89,44 @@ export class RecipeBook {
 
   // Show/hide the unread-memories ribbon.
   setUnread(n) { this._unread = n; this.ribbon.visible = n > 0; }
+
+  #makeTab(id, label, color, y) {
+    const c = document.createElement('canvas'); c.width = 256; c.height = 128;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = color; ctx.fillRect(0, 0, 256, 128);
+    ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(0, 0, 22, 128); // shade toward the spine side
+    ctx.fillStyle = '#f6ead0'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = 'bold 40px Georgia, serif';
+    ctx.fillText(label, 148, 66);
+    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+    const mesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.15, 0.085),
+      new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, opacity: 0.78 }),
+    );
+    mesh.position.set(0.40, y, 0.002);
+    mesh.userData.tabId = id;
+    this.tabGroup.add(mesh);
+    this.tabs.push({ id, mesh, y });
+  }
+
+  // Highlight the tab for the section currently on view.
+  setActiveTab(id) {
+    for (const t of this.tabs) {
+      const active = t.id === id;
+      t.mesh.position.x = active ? 0.415 : 0.40;
+      t.mesh.material.opacity = active ? 1 : 0.72;
+    }
+  }
+
+  // Which index tab a hand/cursor is over (or null). Hub/menu only.
+  tabPokeTest(worldPos) {
+    if (!this.menuMode || this._flip || !this.tabGroup.visible) return null;
+    const p = this.group.worldToLocal(worldPos.clone());
+    if (p.z < -0.16 || p.z > 0.36) return null;
+    if (p.x < 0.33 || p.x > 0.48) return null;
+    for (const t of this.tabs) if (Math.abs(p.y - t.y) < 0.05) return t.id;
+    return null;
+  }
 
   // dir +1: the right page lifts up and over to the left (turning forward).
   // dir -1: a page sweeps back from the left over to the right (turning back).
@@ -265,6 +314,7 @@ export class RecipeBook {
   // page to begin.
   drawMenu(recipe, status) {
     this.menuMode = true;
+    this.tabGroup.visible = true;
     this.recipe = recipe;
 
     // ---- Left page: the dish + its standing in the season ----
@@ -385,6 +435,7 @@ export class RecipeBook {
   // page across the two pages, paginated. `hasNext` = another memory page after.
   drawMemories(memories, page = 0, totalPages = 1, hasNext = false) {
     this.menuMode = true;
+    this.tabGroup.visible = true;
     const PER_PAGE = 5;
     const startL = page * PER_PAGE * 2;
 
