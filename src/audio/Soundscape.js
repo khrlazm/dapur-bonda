@@ -179,10 +179,11 @@ export class Soundscape {
     const bp = ctx.createBiquadFilter();
     const g = ctx.createGain();
     if (kind === 'pour') { bp.type = 'bandpass'; bp.frequency.value = 1600; bp.Q.value = 0.7; g.gain.value = 0.0; }
+    else if (kind === 'rain') { bp.type = 'lowpass'; bp.frequency.value = 2600; g.gain.value = 0.0; } // rain on the roof
     else { bp.type = 'highpass'; bp.frequency.value = 3200; g.gain.value = 0.0; } // sizzle/steam
     src.connect(bp); bp.connect(g); g.connect(this.master);
     src.start();
-    const target = kind === 'pour' ? 0.16 : 0.06;
+    const target = kind === 'pour' ? 0.16 : kind === 'rain' ? 0.14 : 0.06;
     g.gain.setTargetAtTime(target, ctx.currentTime, 0.1);
     return {
       stop: () => {

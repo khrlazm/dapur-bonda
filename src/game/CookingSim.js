@@ -18,7 +18,7 @@ const EPISODES = {
 // unlocks the next, then returns you to the hub. Every scene switch tears the
 // previous episode's props down and resets state.
 export class CookingSim {
-  constructor({ engine, kitchen, book, hud, audio, season, save }) {
+  constructor({ engine, kitchen, book, hud, audio, season, save, environment }) {
     this.engine = engine;
     this.scene = engine.scene;
     this.interaction = engine.interaction;
@@ -28,6 +28,7 @@ export class CookingSim {
     this.audio = audio;
     this.season = season;
     this.save = save;
+    this.environment = environment;
 
     this.mode = 'hub';
     this.episode = null;
@@ -74,6 +75,7 @@ export class CookingSim {
     this.steam.setIntensity(0);
     this._pokeCd = 0.7;
     this.book.moveTo(this.hubBookPos);
+    this.environment?.randomize(); // fresh time-of-day + weather for the hub
 
     this.menuIndex = Math.min(preferredIndex ?? this.menuIndex ?? 0, this.season.length - 1);
     const recipe = this.season[this.menuIndex];
@@ -93,7 +95,8 @@ export class CookingSim {
     if (this.hubStoriesTotal) {
       msg += ` · Kitchen memories ${this.save.hubStoryCount()}/${this.hubStoriesTotal} — wander, and touch what glimmers.`;
     }
-    this.hud.setStep('❦', recipe.title, msg);
+    const wx = this.environment?.label?.();
+    this.hud.setStep(wx ? `❦ ${wx}` : '❦', recipe.title, msg);
     this.hud.setProgress(0);
     this.hud.setHubNav?.(status.index > 0, status.index < status.total - 1);
   }
@@ -140,6 +143,7 @@ export class CookingSim {
     this.fader.start(() => {
       this.mode = 'cooking';
       this.book.moveTo(this.cookBookPos);
+      this.environment?.randomize(); // each cook gets its own weather too
       this.loadEpisode(idx, { fresh: true });
     });
   }

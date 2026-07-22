@@ -86,13 +86,23 @@ export class Engine {
     scene.environment = this.#makeEnvironment();
     scene.environmentIntensity = 0.6;
 
+    // Fixed VR eye height: we pin the virtual eye to a constant world height so
+    // the game plays identically whether you stand or sit (vertical head motion
+    // is absorbed by the rig instead of raising/lowering you in the world).
+    this.eyeHeight = 1.5;
+    this._headWorld = new THREE.Vector3();
+
     window.addEventListener('resize', () => this.#onResize());
     renderer.xr.addEventListener('sessionstart', () => {
       this.controls.enabled = false;
+      this.rig.position.set(0, 0, 0);
+      this.rig.rotation.set(0, 0, 0);
       this.dispatchXR?.(true);
     });
     renderer.xr.addEventListener('sessionend', () => {
       this.controls.enabled = true;
+      this.rig.position.set(0, 0, 0);
+      this.rig.rotation.set(0, 0, 0);
       this.dispatchXR?.(false);
     });
 
@@ -148,6 +158,11 @@ export class Engine {
       this._lastTime = time;
       if (this.controls.enabled) this.controls.update();
       for (const fn of this.updaters) fn(dt, time, frame);
+      // Height-lock: raise/lower the rig so the tracked head stays at eyeHeight.
+      if (this.renderer.xr.isPresenting) {
+        this._headWorld.setFromMatrixPosition(this.renderer.xr.getCamera().matrixWorld);
+        this.rig.position.y += (this.eyeHeight - this._headWorld.y);
+      }
       this.renderer.render(this.scene, this.camera);
     });
   }

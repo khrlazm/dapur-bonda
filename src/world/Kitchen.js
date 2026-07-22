@@ -104,9 +104,18 @@ export class Kitchen {
     back.position.set(0, 1.6, -1.5);
     this.#add(back, { cast: false });
 
-    const left = new THREE.Mesh(new THREE.PlaneGeometry(9, 3.2), wallMat);
-    left.position.set(-2.4, 1.6, 0.5); left.rotation.y = Math.PI / 2;
-    this.#add(left, { cast: false });
+    // Left wall, built as segments around a real window opening (so you can see
+    // the sky/sun/moon/rain through it). Opening: z in [-1.45, 0.05] (centre
+    // z=-0.7, 1.5 wide), y in [0.85, 2.15] (1.3 tall).
+    const seg = (w, h, z, y) => {
+      const s = new THREE.Mesh(new THREE.PlaneGeometry(w, h), wallMat);
+      s.position.set(-2.4, y, z); s.rotation.y = Math.PI / 2;
+      this.#add(s, { cast: false });
+    };
+    seg(9, 0.85, 0.5, 0.425);   // below the window
+    seg(9, 1.05, 0.5, 2.675);   // above the window
+    seg(2.55, 1.3, -2.725, 1.5); // left of the window (z <= -1.45)
+    seg(4.95, 1.3, 2.525, 1.5);  // right of the window (z >= 0.05)
 
     const right = new THREE.Mesh(new THREE.PlaneGeometry(9, 3.2), wallMat);
     right.position.set(2.4, 1.6, 0.5); right.rotation.y = -Math.PI / 2;
@@ -125,28 +134,46 @@ export class Kitchen {
   }
 
   #window() {
-    // A shuttered opening on the left wall — the sun source. We cut the illusion
-    // with a bright emissive pane behind wooden mullions.
+    // An OPEN window on the left wall — no glass, so the sky, sun, moon and rain
+    // are visible through it. Wooden frame, a sill, and shutters thrown open.
     const frame = new THREE.Group();
-    frame.position.set(-2.38, 1.5, -0.7);
+    frame.position.set(-2.4, 1.5, -0.7);
     frame.rotation.y = Math.PI / 2;
 
-    const pane = new THREE.Mesh(
-      new THREE.PlaneGeometry(1.5, 1.3),
-      new THREE.MeshStandardMaterial({ color: 0xfff2cf, emissive: 0xffe6ad, emissiveIntensity: 1.4, roughness: 1 }),
-    );
-    frame.add(pane);
-
     const barMat = this.mat.woodDark;
-    const mk = (w, h, x, y) => {
-      const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.06), barMat);
-      b.position.set(x, y, 0.03); b.castShadow = true; frame.add(b);
+    const box = (w, h, d, x, y, z = 0) => {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), barMat);
+      b.position.set(x, y, z); frame.add(b); return b;
     };
-    mk(1.62, 0.09, 0, 0.66); mk(1.62, 0.09, 0, -0.66);
-    mk(0.09, 1.4, -0.78, 0); mk(0.09, 1.4, 0.78, 0);
-    mk(0.06, 1.3, 0, 0); mk(1.5, 0.06, 0, 0); // cross mullions
+    // frame surround (in the window's local x = world z)
+    box(1.6, 0.08, 0.14, 0, 0.68);   // top
+    box(1.6, 0.1, 0.16, 0, -0.68);   // sill (deeper, a ledge)
+    box(0.08, 1.44, 0.14, -0.78, 0); // left jamb
+    box(0.08, 1.44, 0.14, 0.78, 0);  // right jamb
+    box(0.05, 1.3, 0.05, 0, 0);      // one central mullion
+
+    // Shutters, hinged at the jambs and swung open against the wall.
+    const shutter = (side) => {
+      const hinge = new THREE.Group();
+      hinge.position.set(side * 0.78, 0, 0.02);
+      const panel = new THREE.Mesh(new THREE.BoxGeometry(0.72, 1.3, 0.03), this.mat.wood);
+      panel.geometry.translate(side * 0.36, 0, 0); // pivot at the jamb edge
+      // slats
+      for (let i = -2; i <= 2; i++) {
+        const slat = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.04, 0.04), barMat);
+        slat.position.set(side * 0.36, i * 0.22, 0.02); panel.add(slat);
+      }
+      hinge.add(panel);
+      hinge.rotation.y = side * -2.2; // thrown open, flat-ish against the wall
+      frame.add(hinge);
+    };
+    shutter(-1); shutter(1);
 
     this.group.add(frame);
+
+    // Anchor + outward normal for the Environment (sun/moon/rain live out here).
+    this.anchors.window = new THREE.Vector3(-2.4, 1.5, -0.7);
+    this.anchors.windowOut = new THREE.Vector3(-1, 0, 0); // points outdoors (-x)
   }
 
   #counter() {

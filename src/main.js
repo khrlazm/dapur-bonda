@@ -4,6 +4,7 @@ import { Locomotion } from './core/Locomotion.js';
 import { Kitchen } from './world/Kitchen.js';
 import { Lighting } from './world/Lighting.js';
 import { createSky } from './world/Sky.js';
+import { Environment } from './world/Environment.js';
 import { RecipeBook } from './game/RecipeBook.js';
 import { CookingSim } from './game/CookingSim.js';
 import { HubStories } from './game/HubStories.js';
@@ -25,7 +26,7 @@ async function boot() {
   setStatus(`Rendering with ${engine.backend}…`);
 
   // World
-  createSky(engine.scene);
+  const sky = createSky(engine.scene);
   const lighting = new Lighting(engine.scene);
   const kitchen = new Kitchen(engine.scene);
 
@@ -36,6 +37,12 @@ async function boot() {
 
   const hud = new HUD();
   const audio = new Soundscape();
+
+  // Random time-of-day + weather, re-rolled on every scene transition.
+  const environment = new Environment({
+    scene: engine.scene, renderer: engine.renderer, sky, lighting, kitchen, audio,
+  });
+  environment.setCamera(engine.camera);
 
   // In-world instruction card for VR (the DOM HUD can't show in an immersive
   // session). Created before the sim so the first step reaches it; shown only
@@ -49,7 +56,7 @@ async function boot() {
 
   const book = new RecipeBook(engine.scene, kitchen.anchors.book, season1[0]);
 
-  const sim = new CookingSim({ engine, kitchen, book, hud, audio, season: season1, save: Save });
+  const sim = new CookingSim({ engine, kitchen, book, hud, audio, season: season1, save: Save, environment });
 
   // Explorable hub: story objects scattered through the kitchen. Inspection is
   // hub-only so glimmers and memory toasts never interrupt cooking.
@@ -91,6 +98,7 @@ async function boot() {
     locomotion.update(dt);
     sim.update(dt, t);
     hubStories.update(dt, t);
+    environment.update(dt, t);
     book.update(dt);
     worldPanel.update(t);
   });

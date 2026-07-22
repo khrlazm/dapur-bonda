@@ -12,9 +12,11 @@ export class Lighting {
 
     const hemi = new THREE.HemisphereLight(0xffe6bd, 0x5a4632, 0.55);
     scene.add(hemi);
+    this.hemi = hemi;
 
     const ambient = new THREE.AmbientLight(0xffd9a8, 0.18);
     scene.add(ambient);
+    this.ambient = ambient;
 
     // Key light: morning sun raking through the window on the left wall.
     const sun = new THREE.DirectionalLight(0xffd28a, 2.4);
@@ -30,6 +32,26 @@ export class Lighting {
     stove.position.set(0.9, 1.15, -0.8);
     scene.add(stove);
     this.stove = stove;
+
+    // A hanging lamp over the room — the Environment turns it up at night and
+    // down in daylight so the kitchen stays readable after dark.
+    const lamp = new THREE.PointLight(0xffca73, 0.0, 7, 1.6);
+    lamp.position.set(0.1, 2.7, -0.2);
+    scene.add(lamp);
+    this.lamp = lamp;
+    const shade = new THREE.Mesh(
+      new THREE.ConeGeometry(0.18, 0.16, 16, 1, true),
+      new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.7, side: THREE.DoubleSide }),
+    );
+    shade.position.set(0.1, 2.78, -0.2);
+    scene.add(shade);
+    const bulb = new THREE.Mesh(
+      new THREE.SphereGeometry(0.04, 10, 8),
+      new THREE.MeshStandardMaterial({ color: 0xfff0d0, emissive: 0xffd28a, emissiveIntensity: 1.5, roughness: 1 }),
+    );
+    bulb.position.set(0.1, 2.7, -0.2);
+    scene.add(bulb);
+    this.lampBulb = bulb;
 
     this.#buildShafts();
   }
