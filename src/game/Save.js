@@ -52,5 +52,10 @@ export const Save = {
     if (!s.memories.includes(text)) { s.memories.push(text); this.save(s); }
     return s;
   },
+  // Unread tracking for the Kitchen Memories page + a one-time reveal flag.
+  unreadMemories() { const s = this.load(); return Math.max(0, (s.memories?.length || 0) - (s.seenMemories || 0)); },
+  markMemoriesSeen() { const s = this.load(); s.seenMemories = s.memories?.length || 0; this.save(s); return s; },
+  memoriesIntroShown() { return !!this.load().memoriesIntroShown; },
+  markMemoriesIntroShown() { const s = this.load(); s.memoriesIntroShown = true; this.save(s); },
   reset() { try { localStorage.removeItem(KEY); } catch {} },
 };

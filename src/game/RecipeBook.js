@@ -42,6 +42,16 @@ export class RecipeBook {
     this._flip = null;
     this.menuMode = false;
 
+    // A little red ribbon bookmark that peeks out when there are unread memories.
+    this.ribbon = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.028, 0.16),
+      new THREE.MeshBasicMaterial({ color: 0xb02a2a, side: THREE.DoubleSide, transparent: true, fog: false }),
+    );
+    this.ribbon.position.set(0.24, -0.28, 0.004);
+    this.ribbon.visible = false;
+    this.group.add(this.ribbon);
+    this._unread = 0;
+
     this.draw({ steps: {} }, 0);
   }
 
@@ -66,6 +76,9 @@ export class RecipeBook {
   // Flip with an arbitrary mid-turn draw (used for the memories pages).
   flip(drawFn, dir = 1) { this.#startFlip(drawFn, dir); }
 
+  // Show/hide the unread-memories ribbon.
+  setUnread(n) { this._unread = n; this.ribbon.visible = n > 0; }
+
   // dir +1: the right page lifts up and over to the left (turning forward).
   // dir -1: a page sweeps back from the left over to the right (turning back).
   #startFlip(onMid, dir = 1) {
@@ -75,6 +88,12 @@ export class RecipeBook {
   }
 
   update(dt) {
+    // Gentle "notice me" pulse on the unread ribbon.
+    if (this.ribbon.visible) {
+      this._rt = (this._rt || 0) + dt;
+      this.ribbon.material.opacity = 0.7 + Math.sin(this._rt * 4) * 0.3;
+      this.ribbon.scale.y = 1 + Math.sin(this._rt * 4) * 0.06;
+    }
     const f = this._flip;
     if (!f) return;
     f.t += dt;

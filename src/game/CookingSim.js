@@ -71,6 +71,7 @@ export class CookingSim {
   enterHub(preferredIndex) {
     this._locked = true;
     clearTimeout(this._returnTimer);
+    clearTimeout(this._memIntroTimer);
     this.episode?.teardown?.();
     this.episode = null;
     this.mode = 'hub';
@@ -86,6 +87,20 @@ export class CookingSim {
     this.hud.setHubControls(true);
     this.hud.setCookingControls(false);
     this._locked = false;
+
+    // One-time reveal: the first time you carry unread memories back to the
+    // kitchen, the book gently turns to the Memories page to show you they're
+    // being kept (never mid-cook — this only fires in the hub).
+    if (this.save.unreadMemories() > 0 && !this.save.memoriesIntroShown()) {
+      clearTimeout(this._memIntroTimer);
+      this._memIntroTimer = setTimeout(() => {
+        if (this.mode !== 'hub' || this._locked || this.book._flip || this.fader.busy) return;
+        if (this.menuIndex >= this.season.length) return; // already reading them
+        this.save.markMemoriesIntroShown();
+        this.hud.toast('Bonda’s words are kept here in your book…');
+        this.#showPage(this.season.length, { flip: true, dir: 1 });
+      }, 2400);
+    }
   }
 
   // The book browses recipes (0..season.length-1) then memory pages after them.
@@ -103,11 +118,14 @@ export class CookingSim {
       status.total = total; // book's ‹/› affordances span the whole book
       if (flip) this.book.flipToMenu(recipe, status, dir); else this.book.drawMenu(recipe, status);
       this.#hubPrompt(recipe, status);
+      this.book.setUnread(this.save.unreadMemories());
     } else {
       const mem = this.save.load().memories;
       const mp = this.#memPages();
       const draw = () => this.book.drawMemories(mem, memPage, mp, memPage < mp - 1);
       if (flip) this.book.flip(draw, dir); else draw();
+      this.save.markMemoriesSeen();   // reading them clears the unread marker
+      this.book.setUnread(0);
       this.hud.setStep('❦ Memories', 'Kitchen Memories',
         `${mem.length} gathered — the stories you’ve been given. Flip ◀ back to the recipes${memPage < mp - 1 ? ', ▶ for more' : ''}.`);
       this.hud.setProgress(0);
@@ -123,6 +141,10 @@ export class CookingSim {
         : `Locked — finish ${status.prevTitle} first. Flip ◀ ▶ to browse; keep flipping for your Memories.`;
     if (this.hubStoriesTotal) {
       msg += ` · Kitchen memories ${this.save.hubStoryCount()}/${this.hubStoriesTotal} — wander, and touch what glimmers.`;
+    }
+    const unread = this.save.unreadMemories();
+    if (unread > 0) {
+      msg = `✦ ${unread} new ${unread === 1 ? 'memory' : 'memories'} kept in your book — flip to the end. ` + msg;
     }
     const wx = this.environment?.label?.();
     this.hud.setStep(wx ? `❦ ${wx}` : '❦', recipe.title, msg);
