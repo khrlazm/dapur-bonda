@@ -158,10 +158,14 @@ export class Engine {
       this._lastTime = time;
       if (this.controls.enabled) this.controls.update();
       for (const fn of this.updaters) fn(dt, time, frame);
-      // Height-lock: raise/lower the rig so the tracked head stays at eyeHeight.
-      if (this.renderer.xr.isPresenting) {
-        this._headWorld.setFromMatrixPosition(this.renderer.xr.getCamera().matrixWorld);
-        this.rig.position.y += (this.eyeHeight - this._headWorld.y);
+      // Height-lock: read the head's floor-relative height straight from the
+      // XRFrame viewer pose and set the rig height ABSOLUTELY so the eye sits at
+      // eyeHeight. (Deriving it from the rendered camera created a feedback loop
+      // that drifted the rig every frame — you'd sink through the floor.)
+      if (this.renderer.xr.isPresenting && frame) {
+        const refSpace = this.renderer.xr.getReferenceSpace();
+        const pose = refSpace && frame.getViewerPose(refSpace);
+        if (pose) this.rig.position.y = this.eyeHeight - pose.transform.position.y;
       }
       this.renderer.render(this.scene, this.camera);
     });
