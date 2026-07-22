@@ -6,7 +6,7 @@ import * as THREE from 'three/webgpu';
 // per-vertex 'color' attribute and multiplied in via material.vertexColors — so
 // it needs no second UV set and, because AO is lighting-independent, it survives
 // the random day/night/weather. One-time cost at load (the scene is low-poly).
-export function bakeVertexAO(meshes, { rays = 12, maxDist = 1.1, strength = 0.6 } = {}) {
+export function bakeVertexAO(meshes, { rays = 16, maxDist = 1.4, strength = 0.9 } = {}) {
   if (!meshes || meshes.length === 0) return;
 
   // ---- gather occluder triangles in world space ----

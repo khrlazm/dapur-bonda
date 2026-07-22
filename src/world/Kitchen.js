@@ -318,7 +318,7 @@ export class Kitchen {
   // off for performance; these ground everything under any lighting).
   #contactShadows() {
     const tex = shadowBlob();
-    const blob = (x, z, sx, sz, opacity = 0.85) => {
+    const blob = (x, z, sx, sz, opacity = 1.0) => {
       const m = new THREE.Mesh(
         new THREE.PlaneGeometry(sx, sz),
         new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity, depthWrite: false, fog: true, color: 0x000000 }),

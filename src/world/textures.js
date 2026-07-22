@@ -181,8 +181,8 @@ export function shadowBlob() {
   const canvas = makeCanvas(s);
   const ctx = canvas.getContext('2d');
   const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
-  g.addColorStop(0, 'rgba(0,0,0,0.55)');
-  g.addColorStop(0.55, 'rgba(0,0,0,0.28)');
+  g.addColorStop(0, 'rgba(0,0,0,0.9)');
+  g.addColorStop(0.5, 'rgba(0,0,0,0.6)');
   g.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, s, s);
