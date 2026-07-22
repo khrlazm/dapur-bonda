@@ -97,7 +97,7 @@ async function boot() {
   engine.start();
 
   // Debug/testing hook (harmless; handy for automated smoke tests).
-  window.__dapur = { engine, kitchen, sim, book, hud, audio, Save };
+  window.__dapur = { engine, kitchen, sim, book, hud, audio, Save, hubStories, locomotion };
 
   // Reveal the world
   requestAnimationFrame(() => veil.classList.add('hidden'));

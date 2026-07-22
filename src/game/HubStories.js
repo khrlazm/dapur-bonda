@@ -21,6 +21,21 @@ export class HubStories {
     this.group = new THREE.Group();
     scene.add(this.group);
 
+    // A memory card that pops in-world beside the touched object and faces the
+    // player. The fixed counter panel (WorldPanel) is out of view once you roam
+    // the hub, so in VR this is the memory UI.
+    const cc = document.createElement('canvas'); cc.width = 640; cc.height = 360;
+    this._cardCtx = cc.getContext('2d');
+    this._cardTex = new THREE.CanvasTexture(cc);
+    this._cardTex.colorSpace = THREE.SRGBColorSpace; this._cardTex.anisotropy = 4;
+    this.card = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.52, 0.29),
+      new THREE.MeshBasicMaterial({ map: this._cardTex, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }),
+    );
+    this.card.renderOrder = 600; this.card.visible = false; this.card.frustumCulled = false;
+    scene.add(this.card);
+    this._cardShown = 0; this._cardDur = 8;
+
     this.#build();
     this.total = this.props.length;
     sim.hubStoriesTotal = this.total;
@@ -102,12 +117,65 @@ export class HubStories {
       this.sim.refreshHubPrompt();
     }
     this.hud.toast(prop.memory);
+    const wp = new THREE.Vector3(); prop.object.getWorldPosition(wp);
+    this.#showCard(prop.memory, wp);
     prop.sound?.();
+  }
+
+  #showCard(text, worldPos) {
+    const ctx = this._cardCtx, w = 640, h = 360;
+    const grad = ctx.createRadialGradient(w / 2, h / 2, 40, w / 2, h / 2, h * 0.85);
+    grad.addColorStop(0, '#f7ecd2'); grad.addColorStop(1, '#e6d2a8');
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = 'rgba(120,70,40,0.55)'; ctx.lineWidth = 8; ctx.strokeRect(18, 18, w - 36, h - 36);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#7a2d2d'; ctx.font = 'bold 28px Georgia, serif';
+    ctx.fillText('❦   a memory   ❦', w / 2, 62);
+    ctx.textAlign = 'left'; ctx.fillStyle = '#3f2a16'; ctx.font = 'italic 30px Georgia, serif';
+    this.#wrapText(ctx, text.replace(/[“”]/g, '"'), 46, 116, w - 92, 40);
+    this._cardTex.needsUpdate = true;
+
+    // Sit the card in front of the object, toward the player, so it never buries
+    // itself in the wall behind.
+    const cam = this.interaction.camera;
+    const camPos = new THREE.Vector3(); cam.getWorldPosition(camPos);
+    const toCam = camPos.clone().sub(worldPos).setY(0);
+    if (toCam.lengthSq() > 1e-4) toCam.normalize(); else toCam.set(0, 0, 1);
+    this.card.position.copy(worldPos).add(new THREE.Vector3(0, 0.24, 0)).addScaledVector(toCam, 0.12);
+    this.card.visible = true;
+    this._cardShown = performance.now();
+  }
+
+  #wrapText(ctx, text, x, y, maxW, lh) {
+    const words = text.split(' ');
+    let line = '';
+    for (const wd of words) {
+      const test = line ? line + ' ' + wd : wd;
+      if (ctx.measureText(test).width > maxW && line) { ctx.fillText(line, x, y); line = wd; y += lh; }
+      else line = test;
+    }
+    if (line) ctx.fillText(line, x, y);
   }
 
   // VR: bare-hand proximity also counts as a touch (no pinch needed).
   update(dt, t) {
     const hub = this.sim.mode === 'hub';
+
+    // memory card: face the player, fade in then out, and hide when leaving hub
+    if (this.card.visible) {
+      if (!hub) { this.card.visible = false; }
+      else {
+        const camPos = new THREE.Vector3(); this.interaction.camera.getWorldPosition(camPos);
+        this.card.lookAt(camPos);
+        const el = (performance.now() - this._cardShown) / 1000;
+        let op = 1;
+        if (el < 0.25) op = el / 0.25;
+        else if (el > this._cardDur - 1) op = Math.max(0, this._cardDur - el);
+        this.card.material.opacity = op;
+        if (el > this._cardDur) this.card.visible = false;
+      }
+    }
+
     for (const p of this.props) {
       if (p.glint.visible) {
         p.glint.material.opacity = hub ? 0.55 + Math.sin(t * 0.004 + p.seed) * 0.35 : 0;

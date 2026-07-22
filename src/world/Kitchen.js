@@ -18,11 +18,59 @@ export class Kitchen {
 
     this.#materials();
     this.#floorAndWalls();
+    this.#frontWall();
     this.#window();
     this.#counter();
     this.#stove();
     this.#shelves();
     this.#props();
+  }
+
+  // The fourth wall behind the player, with a doorway open to the kampung so the
+  // room reads as enclosed and lived-in rather than a floating stage.
+  #frontWall() {
+    const z = 2.2, H = 3.2, yC = 1.6;
+    const doorW = 1.1, doorH = 2.15;
+    const g = new THREE.Group();
+
+    const panel = (w, h, x, y) => {
+      const p = new THREE.Mesh(new THREE.PlaneGeometry(w, h), this.mat.wall);
+      p.position.set(x, y, z); p.rotation.y = Math.PI; // face into the room
+      p.receiveShadow = false; g.add(p);
+    };
+    panel(1.85, H, -1.475, yC);                    // left of the door
+    panel(1.85, H, 1.475, yC);                     // right of the door
+    panel(doorW, H - doorH, 0, doorH + (H - doorH) / 2); // lintel above the door
+
+    // Wooden door frame + threshold.
+    const fm = this.mat.woodDark;
+    for (const x of [-0.57, 0.57]) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.07, doorH, 0.12), fm);
+      post.position.set(x, doorH / 2, z - 0.05); g.add(post);
+    }
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(doorW + 0.16, 0.1, 0.12), fm);
+    beam.position.set(0, doorH, z - 0.05); g.add(beam);
+    const sill = new THREE.Mesh(new THREE.BoxGeometry(doorW + 0.12, 0.04, 0.16), fm);
+    sill.position.set(0, 0.02, z - 0.02); g.add(sill);
+
+    // An ajar plank door, hinged on the left post, swung inward.
+    const hinge = new THREE.Group();
+    hinge.position.set(-0.55, 0, z - 0.02);
+    const door = new THREE.Mesh(new THREE.BoxGeometry(doorW * 0.96, doorH * 0.98, 0.035), this.mat.wood);
+    door.geometry.translate(doorW * 0.48, doorH * 0.49, 0); // pivot at the hinge edge
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.02, 10, 8), this.mat.brass);
+    knob.position.set(doorW * 0.9, doorH * 0.49, 0.03); door.add(knob);
+    hinge.add(door);
+    hinge.rotation.y = -0.7; // ajar into the room
+    g.add(hinge);
+
+    // Warm daylight spilling in from the kampung outside.
+    const glow = new THREE.PointLight(0xffe1a6, 0.7, 5, 2);
+    glow.position.set(0, 1.3, z - 0.6);
+    g.add(glow);
+
+    this.group.add(g);
+    this.anchors.door = new THREE.Vector3(0, 1.0, z);
   }
 
   #materials() {
