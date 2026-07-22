@@ -6,12 +6,14 @@ import { PulutKuning } from './episodes/PulutKuning.js';
 import { PisangSira } from './episodes/PisangSira.js';
 import { NasiLemak } from './episodes/NasiLemak.js';
 import { SeriMuka } from './episodes/SeriMuka.js';
+import { Rendang } from './episodes/Rendang.js';
 
 const EPISODES = {
   'pulut-kuning': PulutKuning,
   'pisang-sira': PisangSira,
   'nasi-lemak': NasiLemak,
   'seri-muka': SeriMuka,
+  'rendang': Rendang,
 };
 
 // The game loop host. It always boots into the HUB (an empty kitchen where the

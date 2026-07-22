@@ -254,17 +254,78 @@ export const seriMuka = {
     '“Two layers, set just right. That takes a patient hand — and you have one now.” — Bonda',
 };
 
-// Episode Five is a teaser — shown in the book but not yet cookable.
-export const rendangSoon = {
+// Season One, Episode Five: Rendang Ayam Raya — the festive crown. Grind the
+// rempah, toast it dark, coat the chicken, pour the santan, and reduce it low
+// and slow until rich. Reuses stir / place / pour / glaze at a wok, with a
+// second station (the stone mortar) for the rempah.
+export const rendang = {
   id: 'rendang',
-  title: 'Rendang',
-  subtitle: 'Beef simmered for hours in coconut and spices until dark, dry and deep.',
+  title: 'Rendang Ayam',
+  subtitle: 'A festive Hari Raya chicken rendang — fragrant rempah, creamy coconut, tender ayam.',
   season: 1,
   episode: 5,
-  comingSoon: true,
-  ingredients: [],
-  steps: [],
-  closing: '',
+  ingredients: [
+    { id: 'chicken', name: 'Chicken', note: '1 whole, cut in pieces' },
+    { id: 'santan', name: 'Coconut milk', note: '2 cups' },
+    { id: 'kerisik', name: 'Kerisik', note: '½ cup toasted coconut' },
+    { id: 'rempah', name: 'Rempah', note: 'shallots, garlic, ginger, galangal, lemongrass, chili' },
+    { id: 'daun', name: 'Turmeric leaf & spices', note: 'plus salt & palm sugar' },
+  ],
+  steps: [
+    {
+      id: 'blend',
+      title: 'Blend the rempah',
+      instruction: 'Grind the aromatics in the lesung into a smooth, red rempah.',
+      condition: { type: 'STIR', threshold: 6 },
+      memory: '“The rempah is the soul. Pound it by hand — Bonda can always taste the blender.”',
+    },
+    {
+      id: 'saute',
+      title: 'Toast & sauté',
+      instruction: 'Fry the rempah in the wok with the spices until fragrant and dark.',
+      condition: { type: 'STIR', threshold: 6 },
+      memory: '“Fry it slow until it turns dark and the whole kampung knows it is Raya.”',
+    },
+    {
+      id: 'chicken',
+      title: 'Add the chicken',
+      instruction: 'Add the chicken and coat every piece in the spiced rempah.',
+      condition: { type: 'PLACE', threshold: 1 },
+      memory: '“Coat every piece. The chicken must wear the spice like its Raya best.”',
+    },
+    {
+      id: 'santan',
+      title: 'Pour the santan',
+      instruction: 'Pour in the coconut milk and turmeric leaf; let it simmer.',
+      condition: { type: 'POUR', threshold: 1 },
+      memory: '“First-press santan, and the turmeric leaf — that smell IS Hari Raya.”',
+    },
+    {
+      id: 'slowcook',
+      title: 'Slow cook',
+      instruction: 'Stir low and slow until the sauce thickens and darkens.',
+      condition: { type: 'STIR', threshold: 8 },
+      memory: '“Low fire, patient hand. Rendang is love you can taste the hours in.”',
+    },
+    {
+      id: 'finish',
+      title: 'Finish & serve',
+      instruction: 'Fold in the kerisik until rich, thick and glossy — then serve.',
+      condition: { type: 'GLAZE', threshold: 5 },
+      memory: '“Kerisik last, for the deep nutty finish. Now — makan, and pass the ketupat.”',
+    },
+  ],
+  closing:
+    '“Rendang cannot be rushed. Neither can a life well cooked. Selamat Hari Raya, child.” — Bonda',
 };
 
-export const season1 = [pulutKuning, pisangSira, nasiLemak, seriMuka, rendangSoon];
+// Teasers — shown in the book but not yet cookable.
+const soon = (id, title, subtitle, episode) => ({ id, title, subtitle, season: 1, episode, comingSoon: true, ingredients: [], steps: [], closing: '' });
+export const cekodokPisangSoon = soon('cekodok-pisang', 'Cekodok Pisang', 'Mashed-banana fritters, crisp outside and soft within — the rainy-day snack.', 6);
+export const ikanSinggangSoon = soon('ikan-singgang', 'Ikan Singgang', 'Fish poached in a sour turmeric broth — clean, tangy and healing.', 7);
+export const nasiKerabuSoon = soon('nasi-kerabu', 'Nasi Kerabu', 'Blue rice with herbs, fish and sambal — a plateful of the east coast.', 8);
+
+export const season1 = [
+  pulutKuning, pisangSira, nasiLemak, seriMuka, rendang,
+  cekodokPisangSoon, ikanSinggangSoon, nasiKerabuSoon,
+];
