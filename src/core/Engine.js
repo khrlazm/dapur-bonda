@@ -154,6 +154,7 @@ export class Engine {
 
   #onResize() {
     const w = window.innerWidth, h = window.innerHeight;
+    if (w === 0 || h === 0) return; // avoid a NaN aspect if the canvas is briefly 0-sized
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);

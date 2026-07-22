@@ -127,4 +127,80 @@ export const pisangSira = {
     '“Sweet things need patience most of all. You have a steady hand now, child. I am glad.” — Bonda',
 };
 
-export const season1 = [pulutKuning, pisangSira];
+// Season One, Episode Three: Nasi Lemak — fragrant coconut rice with sambal and
+// its little companions. Reuses swirl / pour / steam / glaze / place / plate.
+export const nasiLemak = {
+  id: 'nasi-lemak',
+  title: 'Nasi Lemak',
+  subtitle: 'Coconut rice with sambal, ikan bilis, peanuts, egg and cucumber — the national comfort.',
+  season: 1,
+  episode: 3,
+  ingredients: [
+    { id: 'rice', name: 'Rice', note: '2 cups, washed' },
+    { id: 'santan', name: 'Coconut milk', note: '1 cup' },
+    { id: 'pandan', name: 'Pandan leaf', note: '1, knotted' },
+    { id: 'sambal', name: 'Sambal', note: 'to taste' },
+    { id: 'garnish', name: 'Ikan bilis, peanuts, egg, cucumber', note: 'to serve' },
+  ],
+  steps: [
+    {
+      id: 'wash',
+      title: 'Wash the rice',
+      instruction: 'Swirl the rice with your hand until the water runs clear.',
+      condition: { type: 'SWIRL', threshold: 6 },
+      memory: '“Nasi lemak begins the day. Wash the rice while the kettle sings.”',
+    },
+    {
+      id: 'santan',
+      title: 'Pour the santan',
+      instruction: 'Pour the coconut milk over the rice until it just covers.',
+      condition: { type: 'POUR', threshold: 1 },
+      memory: '“Lemak means rich. The santan is why the whole street smells of breakfast.”',
+    },
+    {
+      id: 'steam',
+      title: 'Steam the rice',
+      instruction: 'Cover with the lid and let it steam until fragrant and fluffy.',
+      condition: { type: 'STEAM_TIME', threshold: 6 },
+      memory: '“Add a knot of pandan under the lid. That green smell is childhood itself.”',
+    },
+    {
+      id: 'sambal',
+      title: 'Spoon on the sambal',
+      instruction: 'Spoon the sambal over the rice, glossy and red.',
+      condition: { type: 'GLAZE', threshold: 6 },
+      memory: '“Everyone argues whose sambal is best. The right answer is always your mother’s.”',
+    },
+    {
+      id: 'garnish',
+      title: 'Add the garnish',
+      instruction: 'Lay the ikan bilis, peanuts, egg and cucumber into the bowl.',
+      condition: { type: 'PLACE', threshold: 1 },
+      memory: '“Crunchy, salty, cool and sweet — a little of everything on one plate.”',
+    },
+    {
+      id: 'serve',
+      title: 'Serve',
+      instruction: 'Shape the nasi lemak onto the banana leaf.',
+      condition: { type: 'PLATE', threshold: 1 },
+      memory: '“Wrapped in banana leaf for the road, or open on a plate at home. Either way — makan.”',
+    },
+  ],
+  closing:
+    '“Three dishes now. You could feed a whole family a proper morning. Bonda is proud.” — Bonda',
+};
+
+// Episode Four is a teaser — shown in the book but not yet cookable.
+export const rendangSoon = {
+  id: 'rendang',
+  title: 'Rendang',
+  subtitle: 'Beef simmered for hours in coconut and spices until dark, dry and deep.',
+  season: 1,
+  episode: 4,
+  comingSoon: true,
+  ingredients: [],
+  steps: [],
+  closing: '',
+};
+
+export const season1 = [pulutKuning, pisangSira, nasiLemak, rendangSoon];

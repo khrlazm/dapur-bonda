@@ -4,10 +4,12 @@ import { Pour } from '../fx/Pour.js';
 import { Fader } from '../core/Fader.js';
 import { PulutKuning } from './episodes/PulutKuning.js';
 import { PisangSira } from './episodes/PisangSira.js';
+import { NasiLemak } from './episodes/NasiLemak.js';
 
 const EPISODES = {
   'pulut-kuning': PulutKuning,
   'pisang-sira': PisangSira,
+  'nasi-lemak': NasiLemak,
 };
 
 // The game loop host. It always boots into the HUB (an empty kitchen where the
@@ -39,8 +41,9 @@ export class CookingSim {
     this.fader = new Fader(this.engine.camera);
     this.interaction.onPour = (o, dt, spout) => this.episode?.handlePour?.(o, dt, spout);
 
-    // The book sits centre-counter in the hub, and moves aside while cooking.
-    this.hubBookPos = new THREE.Vector3(0.1, kitchen.counterTopY + 0.04, -0.66);
+    // The book sits centre-counter in the hub (raised a little so its tilted
+    // front edge doesn't clip into the worktop), and moves aside while cooking.
+    this.hubBookPos = new THREE.Vector3(0.1, kitchen.counterTopY + 0.13, -0.64);
     this.cookBookPos = kitchen.anchors.book.clone();
 
     this.enterHub(0);
@@ -49,9 +52,12 @@ export class CookingSim {
   // ---------- Status / unlock logic ----------
   #status(i) {
     const s = this.save.load().recipes;
-    const complete = !!s[this.season[i].id]?.complete;
-    const unlocked = i === 0 || !!s[this.season[i - 1].id]?.complete;
-    return { complete, unlocked, index: i, total: this.season.length, prevTitle: i > 0 ? this.season[i - 1].title : null };
+    const recipe = this.season[i];
+    const comingSoon = !!recipe.comingSoon;
+    const complete = !comingSoon && !!s[recipe.id]?.complete;
+    // A "coming soon" teaser is never cookable, even once its predecessor is done.
+    const unlocked = !comingSoon && (i === 0 || !!s[this.season[i - 1].id]?.complete);
+    return { comingSoon, complete, unlocked, index: i, total: this.season.length, prevTitle: i > 0 ? this.season[i - 1].title : null };
   }
 
   // ---------- Hub ----------
@@ -79,9 +85,11 @@ export class CookingSim {
   }
 
   #hubPrompt(recipe, status) {
-    const msg = status.unlocked
-      ? 'Reach into the right page — or press Cook — to begin. Flip ◀ ▶ to browse the recipes.'
-      : `Locked — finish ${status.prevTitle} first. Flip ◀ ▶ to browse the recipes.`;
+    const msg = status.comingSoon
+      ? 'Coming soon — a future episode. Flip ◀ ▶ to browse the recipes.'
+      : status.unlocked
+        ? 'Reach into the right page — or press Cook — to begin. Flip ◀ ▶ to browse the recipes.'
+        : `Locked — finish ${status.prevTitle} first. Flip ◀ ▶ to browse the recipes.`;
     this.hud.setStep('❦', recipe.title, msg);
     this.hud.setProgress(0);
   }
@@ -177,7 +185,7 @@ export class CookingSim {
     this.hud.setStep('✓', `${this.recipe.title} — done`, this.recipe.closing);
 
     const nextIdx = this.recipeIndex + 1;
-    if (!wasComplete && nextIdx < this.season.length) {
+    if (!wasComplete && nextIdx < this.season.length && !this.season[nextIdx].comingSoon) {
       this.hud.toast(`New recipe unlocked — ${this.season[nextIdx].title}`);
     }
     // pause on the closing memory, then fade to black and return to the hub

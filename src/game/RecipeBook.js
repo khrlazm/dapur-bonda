@@ -249,9 +249,10 @@ export class RecipeBook {
       ctx.fillText(recipe.title, w / 2, 230);
 
       // status badge
-      const badge = status.complete ? ['✓  Cooked', '#3d6b2f']
-        : status.unlocked ? ['Ready to cook', '#7a2d2d']
-          : ['🔒  Locked', '#9a7a55'];
+      const badge = status.comingSoon ? ['Coming soon', '#8a6b3a']
+        : status.complete ? ['✓  Cooked', '#3d6b2f']
+          : status.unlocked ? ['Ready to cook', '#7a2d2d']
+            : ['🔒  Locked', '#9a7a55'];
       ctx.fillStyle = badge[1];
       ctx.font = 'bold 38px Georgia, serif';
       ctx.fillText(badge[0], w / 2, 300);
@@ -293,6 +294,10 @@ export class RecipeBook {
 
       ctx.font = '30px Georgia, serif';
       let y = 210;
+      if (recipe.steps.length === 0) {
+        ctx.fillStyle = '#8a6b4a'; ctx.font = 'italic 30px Georgia, serif';
+        this.#wrap(ctx, 'A future episode of Dapur Bonda. The pages are still being written…', 130, y, w - 260, 40);
+      }
       recipe.steps.forEach((s, i) => {
         ctx.fillStyle = '#8a6b4a'; ctx.fillText(`${i + 1}.`, 130, y);
         ctx.fillStyle = '#4a2f1a'; ctx.fillText(s.title, 185, y);
@@ -310,6 +315,11 @@ export class RecipeBook {
         ctx.font = 'bold 34px Georgia, serif';
         ctx.fillText('REACH IN', cx, cy - 6);
         ctx.fillText('TO COOK', cx, cy + 34);
+      } else if (status.comingSoon) {
+        ctx.fillStyle = '#8a6b3a';
+        ctx.font = 'bold 34px Georgia, serif';
+        ctx.fillText('COMING', cx, cy - 6);
+        ctx.fillText('SOON', cx, cy + 34);
       } else {
         ctx.fillStyle = '#8a6b4a';
         ctx.font = 'italic 26px Georgia, serif';
