@@ -164,7 +164,7 @@ export class Kitchen {
         slat.position.set(side * 0.36, i * 0.22, 0.02); panel.add(slat);
       }
       hinge.add(panel);
-      hinge.rotation.y = side * -2.2; // thrown open, flat-ish against the wall
+      hinge.rotation.y = side * 2.4; // thrown open OUTWARD, back against the wall
       frame.add(hinge);
     };
     shutter(-1); shutter(1);

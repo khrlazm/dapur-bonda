@@ -87,13 +87,18 @@ export class RecipeBook {
   // strip = previous recipe, far-right strip = next, the rest of the right page
   // = start cooking. Only active while showing the menu.
   pokeTest(worldPos) {
-    if (!this.menuMode || this._flip) return null;
+    if (this._flip) return null;
     const p = this.group.worldToLocal(worldPos.clone());
     if (p.z < -0.16 || p.z > 0.36) return null;      // must be near the page plane
     if (p.y < -0.24 || p.y > 0.24) return null;
-    if (p.x >= -0.34 && p.x <= -0.20) return 'prev';
-    if (p.x >= 0.20 && p.x <= 0.34) return 'next';
-    if (p.x >= 0.00 && p.x < 0.20) return 'start';
+    if (this.menuMode) {
+      if (p.x >= -0.34 && p.x <= -0.20) return 'prev';
+      if (p.x >= 0.20 && p.x <= 0.34) return 'next';
+      if (p.x >= 0.00 && p.x < 0.20) return 'start';
+      return null;
+    }
+    // cooking spread: bottom-left corner returns to the kitchen hub
+    if (p.x >= -0.34 && p.x <= -0.12 && p.y <= -0.08) return 'home';
     return null;
   }
 
@@ -178,6 +183,12 @@ export class RecipeBook {
         ctx.font = '34px Georgia, serif';
         y += 96;
       }
+
+      // "back to the kitchen" affordance (bottom-left; the 'home' poke zone)
+      ctx.textAlign = 'left';
+      ctx.fillStyle = 'rgba(90,47,20,0.72)';
+      ctx.font = 'italic 34px Georgia, serif';
+      ctx.fillText('‹  back to the kitchen', 100, h - 70);
       tex.needsUpdate = true;
     }
 

@@ -83,6 +83,7 @@ async function boot() {
   document.getElementById('btn-prev').addEventListener('click', () => sim.browseMenu(-1));
   document.getElementById('btn-next').addEventListener('click', () => sim.browseMenu(1));
   document.getElementById('btn-cook').addEventListener('click', () => sim.selectMenu());
+  document.getElementById('btn-hub').addEventListener('click', () => sim.returnToHubEarly());
   window.addEventListener('keydown', (e) => {
     if (sim.mode !== 'hub') return;
     if (e.key === '[' || e.key === 'ArrowLeft') sim.browseMenu(-1);

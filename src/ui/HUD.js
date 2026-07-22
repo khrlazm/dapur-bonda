@@ -6,6 +6,7 @@ export class HUD {
     this.stepCard = document.getElementById('step-card');
     this.toastEl = document.getElementById('toast');
     this.hubControls = document.getElementById('hub-controls');
+    this.hubButton = document.getElementById('btn-hub');
     this._toastTimer = null;
     this.worldPanel = null; // in-world 3D panel, mirrored for VR
   }
@@ -14,6 +15,9 @@ export class HUD {
 
   // Show/hide the desktop recipe-menu buttons (◀ Cook ▶).
   setHubControls(show) { this.hubControls.style.display = show ? 'inline' : 'none'; }
+
+  // Show/hide the desktop "⌂ Kitchen" (return to hub) button while cooking.
+  setCookingControls(show) { if (this.hubButton) this.hubButton.style.display = show ? 'inline' : 'none'; }
 
   // Grey out ◀/▶ at the ends of the book (browsing clamps, no wrap-around).
   setHubNav(canPrev, canNext) {

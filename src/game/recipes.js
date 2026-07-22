@@ -190,17 +190,81 @@ export const nasiLemak = {
     '“Three dishes now. You could feed a whole family a proper morning. Bonda is proud.” — Bonda',
 };
 
-// Episode Four is a teaser — shown in the book but not yet cookable.
+// Season One, Episode Four: Kuih Seri Muka — a two-layer steamed kuih, sticky
+// glutinous rice below and silky pandan custard above. Reuses swirl / steam /
+// press (glaze) / whisk (stir) / pour / plate.
+export const seriMuka = {
+  id: 'seri-muka',
+  title: 'Kuih Seri Muka',
+  subtitle: 'Glutinous rice below, silky pandan custard above — soft, fragrant, nostalgic.',
+  season: 1,
+  episode: 4,
+  ingredients: [
+    { id: 'rice', name: 'Glutinous rice', note: '2 cups' },
+    { id: 'santan', name: 'Coconut milk', note: '1 cup' },
+    { id: 'pandan', name: 'Pandan juice', note: '1 cup' },
+    { id: 'egg', name: 'Eggs', note: '3' },
+    { id: 'sugar', name: 'Sugar & flour', note: 'for the custard' },
+  ],
+  steps: [
+    {
+      id: 'wash',
+      title: 'Rinse & soak the pulut',
+      instruction: 'Swirl the glutinous rice until the water runs clear.',
+      condition: { type: 'SWIRL', threshold: 6 },
+      memory: '“Two layers, two patiences. The rice first — rinse it like you mean it.”',
+    },
+    {
+      id: 'steam',
+      title: 'Steam the pulut',
+      instruction: 'Cover with the lid and steam the rice with coconut milk until sticky.',
+      condition: { type: 'STEAM_TIME', threshold: 6 },
+      memory: '“Sticky, not wet. The rice must hold together to carry the custard.”',
+    },
+    {
+      id: 'press',
+      title: 'Press it into the tray',
+      instruction: 'Press the steamed rice down with the paddle into a firm, even layer.',
+      condition: { type: 'GLAZE', threshold: 6 },
+      memory: '“Press it flat and even — a crooked base makes a crooked heart, Bonda says.”',
+    },
+    {
+      id: 'whisk',
+      title: 'Whisk the pandan custard',
+      instruction: 'Whisk the pandan custard in its bowl until smooth and green.',
+      condition: { type: 'STIR', threshold: 5 },
+      memory: '“Real pandan, squeezed by hand. The bottled green is a stranger in this kitchen.”',
+    },
+    {
+      id: 'pour',
+      title: 'Pour & steam',
+      instruction: 'Pour the custard over the rice; it will steam into a silky top.',
+      condition: { type: 'POUR', threshold: 1 },
+      memory: '“Pour gently over the back of a spoon so the layers never quarrel.”',
+    },
+    {
+      id: 'serve',
+      title: 'Cool & slice',
+      instruction: 'Let it set, then plate a neat green-topped square.',
+      condition: { type: 'PLATE', threshold: 1 },
+      memory: '“Let it cool fully before you cut — the wait is the last, hardest step.”',
+    },
+  ],
+  closing:
+    '“Two layers, set just right. That takes a patient hand — and you have one now.” — Bonda',
+};
+
+// Episode Five is a teaser — shown in the book but not yet cookable.
 export const rendangSoon = {
   id: 'rendang',
   title: 'Rendang',
   subtitle: 'Beef simmered for hours in coconut and spices until dark, dry and deep.',
   season: 1,
-  episode: 4,
+  episode: 5,
   comingSoon: true,
   ingredients: [],
   steps: [],
   closing: '',
 };
 
-export const season1 = [pulutKuning, pisangSira, nasiLemak, rendangSoon];
+export const season1 = [pulutKuning, pisangSira, nasiLemak, seriMuka, rendangSoon];

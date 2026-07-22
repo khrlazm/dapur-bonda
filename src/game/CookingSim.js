@@ -5,11 +5,13 @@ import { Fader } from '../core/Fader.js';
 import { PulutKuning } from './episodes/PulutKuning.js';
 import { PisangSira } from './episodes/PisangSira.js';
 import { NasiLemak } from './episodes/NasiLemak.js';
+import { SeriMuka } from './episodes/SeriMuka.js';
 
 const EPISODES = {
   'pulut-kuning': PulutKuning,
   'pisang-sira': PisangSira,
   'nasi-lemak': NasiLemak,
+  'seri-muka': SeriMuka,
 };
 
 // The game loop host. It always boots into the HUB (an empty kitchen where the
@@ -83,6 +85,7 @@ export class CookingSim {
     this.book.drawMenu(recipe, status);
     this.#hubPrompt(recipe, status);
     this.hud.setHubControls(true);
+    this.hud.setCookingControls(false);
     this._locked = false;
   }
 
@@ -133,12 +136,20 @@ export class CookingSim {
     this.startRecipe(this.menuIndex);
   }
 
+  // Abandon the current cook and fade back to the kitchen hub.
+  returnToHubEarly() {
+    if (this.mode !== 'cooking' || this.fader.busy) return;
+    clearTimeout(this._returnTimer);
+    this.fader.start(() => this.enterHub(this.recipeIndex));
+  }
+
   // ---------- Cooking ----------
   // Fade to black, build the recipe's scene at full-black, then fade in.
   startRecipe(idx) {
     if (this.fader.busy) return;
     this._locked = true;
     this.hud.setHubControls(false);
+    this.hud.setCookingControls(true);
     this.save.resetSteps(this.season[idx].id); // always a fresh cook
     this.fader.start(() => {
       this.mode = 'cooking';
@@ -224,6 +235,20 @@ export class CookingSim {
 
     if (this.mode === 'hub') { this.#hubUpdate(dt); return; }
     if (this.done || this._locked) return;
+
+    // VR: poke the book's bottom-left corner to abandon the cook and go back to
+    // the kitchen hub. (Desktop uses the ⌂ Kitchen button.)
+    if (this.engine.renderer.xr.isPresenting) {
+      this._pokeCd -= dt;
+      if (this._pokeCd <= 0 && !this.book._flip) {
+        for (const hand of this.interaction.hands) {
+          if (this.book.pokeTest(hand.worldPos) === 'home') {
+            this._pokeCd = 0.6; this.interaction.pulse(hand, 0.35, 30);
+            this.returnToHubEarly(); return;
+          }
+        }
+      }
+    }
 
     const step = this.recipe.steps[this.stepIndex];
     if (!step) return;
