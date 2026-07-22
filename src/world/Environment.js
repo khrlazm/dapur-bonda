@@ -43,6 +43,8 @@ export class Environment {
     this.audio = audio;
 
     this.state = { time: 'morning', weather: 'clear' };
+    // AgX needs more exposure than the ACES-tuned presets to stay punchy.
+    this.exposureScale = 1.45;
     this._tmp = new THREE.Vector3();
 
     this.#buildDisc();
@@ -112,7 +114,7 @@ export class Environment {
     // Fog + exposure
     this.scene.fog.color.set(toGrey(p.fog, grey * 0.5));
     this.scene.fog.density = p.fogD * (rain ? 2.1 : overcast ? 1.5 : 1);
-    this.renderer.toneMappingExposure = p.exposure;
+    this.renderer.toneMappingExposure = p.exposure * this.exposureScale;
 
     // Celestial disc: place it out beyond the window along the light ray.
     const dir = this._tmp.copy(L.sun.position).sub(target).normalize();

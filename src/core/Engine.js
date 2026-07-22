@@ -35,8 +35,11 @@ export class Engine {
     });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    // AgX tone mapping — filmic, graceful highlight rolloff on the bright window
+    // and embers. It renders a little darker/flatter than ACES, so exposure is
+    // pushed up (here and per time-of-day in Environment) to keep it punchy.
+    renderer.toneMapping = THREE.AgXToneMapping;
+    renderer.toneMappingExposure = 1.45;
     // Shadows disabled: the extra depth pass is the single biggest cost on a
     // Quest, and the warm lighting reads fine without them.
     renderer.shadowMap.enabled = false;
