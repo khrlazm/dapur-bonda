@@ -10,7 +10,9 @@ export class Locomotion {
   constructor(engine, {
     speed = 1.35,
     snapAngle = THREE.MathUtils.degToRad(30),
-    bounds = { minX: -1.4, maxX: 1.4, minZ: -0.15, maxZ: 1.8 },
+    // The whole kitchen is walkable (explorable hub); the counter band along
+    // the back is kept out of reach by minZ so you can't clip through it.
+    bounds = { minX: -2.0, maxX: 2.0, minZ: -0.28, maxZ: 1.9 },
   } = {}) {
     this.renderer = engine.renderer;
     this.rig = engine.rig;

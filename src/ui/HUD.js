@@ -15,6 +15,14 @@ export class HUD {
   // Show/hide the desktop recipe-menu buttons (◀ Cook ▶).
   setHubControls(show) { this.hubControls.style.display = show ? 'inline' : 'none'; }
 
+  // Grey out ◀/▶ at the ends of the book (browsing clamps, no wrap-around).
+  setHubNav(canPrev, canNext) {
+    const prev = document.getElementById('btn-prev');
+    const next = document.getElementById('btn-next');
+    if (prev) { prev.disabled = !canPrev; prev.style.opacity = canPrev ? '1' : '0.4'; }
+    if (next) { next.disabled = !canNext; next.style.opacity = canNext ? '1' : '0.4'; }
+  }
+
   setStep(num, title, instruction) {
     this.stepCard.innerHTML = `
       <h2><span class="step-num">Step ${num}</span> · ${title}</h2>

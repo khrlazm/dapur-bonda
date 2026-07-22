@@ -118,6 +118,44 @@ export class Soundscape {
   sprinkle() { this.#burst(4200, 3, 0.18, 0.12); }
   fluff() { this.#burst(300, 0.8, 0.16, 0.14); }
 
+  // A tinny little radio tune — a few pentatonic notes through a bandpass so it
+  // sounds like an old kampung radio.
+  radio() {
+    if (!this.ready) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1400; bp.Q.value = 2.5;
+    bp.connect(this.master);
+    const notes = [523, 587, 659, 784, 659, 880, 784];
+    notes.forEach((f, i) => {
+      const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = f;
+      const g = ctx.createGain();
+      const st = t + i * 0.16;
+      g.gain.setValueAtTime(0.0001, st);
+      g.gain.exponentialRampToValueAtTime(0.12, st + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, st + 0.15);
+      o.connect(g); g.connect(bp);
+      o.start(st); o.stop(st + 0.18);
+    });
+  }
+
+  // A soft kettle whistle sliding up and fading.
+  whistle() {
+    if (!this.ready) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const o = ctx.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(1500, t);
+    o.frequency.exponentialRampToValueAtTime(2300, t + 0.5);
+    const v = ctx.createOscillator(); v.frequency.value = 9; // vibrato
+    const vg = ctx.createGain(); vg.gain.value = 30;
+    v.connect(vg); vg.connect(o.frequency);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.06, t + 0.15);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+    o.connect(g); g.connect(this.master);
+    o.start(t); v.start(t); o.stop(t + 1); v.stop(t + 1);
+  }
+
   ding() {
     if (!this.ready) return;
     const ctx = this.ctx, t = ctx.currentTime;

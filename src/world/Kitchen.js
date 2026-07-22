@@ -206,19 +206,33 @@ export class Kitchen {
       this.#add(leaf, { cast: false });
     }
 
-    // A little potted herb by the window for life.
+    // A little side table under the window light, with Bonda's pandan pot on it
+    // (the pot used to float in mid-air past the counter's end).
+    const tableTop = 0.85;
+    const sideTable = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.05, 0.42), this.mat.wood);
+    sideTable.position.set(-2.14, tableTop - 0.025, -0.05);
+    this.#add(sideTable);
+    for (const [dx, dz] of [[-0.17, -0.17], [0.17, -0.17], [-0.17, 0.17], [0.17, 0.17]]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, tableTop - 0.05, 0.05), this.mat.woodDark);
+      leg.position.set(-2.14 + dx, (tableTop - 0.05) / 2, -0.05 + dz);
+      this.#add(leg);
+    }
+    this.anchors.sideTable = new THREE.Vector3(-2.14, tableTop, -0.05);
+
+    const potPos = new THREE.Vector3(-2.2, tableTop + 0.06, -0.18);
     const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 0.12, 12), this.mat.ceramic);
-    pot.position.set(-1.9, this.counterTopY + 0.06, -0.95);
+    pot.position.copy(potPos);
     this.#add(pot);
     for (let i = 0; i < 7; i++) {
       const blade = new THREE.Mesh(
         new THREE.ConeGeometry(0.012, 0.22, 4),
         new THREE.MeshStandardMaterial({ color: 0x4a7c3a, roughness: 0.7 }),
       );
-      blade.position.set(-1.9 + (Math.random() - 0.5) * 0.08, this.counterTopY + 0.2, -0.95 + (Math.random() - 0.5) * 0.08);
+      blade.position.set(potPos.x + (Math.random() - 0.5) * 0.08, tableTop + 0.2, potPos.z + (Math.random() - 0.5) * 0.08);
       blade.rotation.z = (Math.random() - 0.5) * 0.5;
       this.#add(blade);
     }
+    this.anchors.pandan = potPos.clone().setY(tableTop + 0.15);
   }
 
   update(t) {

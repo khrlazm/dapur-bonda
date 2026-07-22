@@ -56,17 +56,19 @@ export class RecipeBook {
   }
 
   flipToRecipe(recipe, save = { steps: {} }, index = 0) {
-    this.#startFlip(() => this.setRecipe(recipe, save, index));
+    this.#startFlip(() => this.setRecipe(recipe, save, index), 1);
   }
 
   flipToMenu(recipe, status, dir = 1) {
-    this.#startFlip(() => this.drawMenu(recipe, status));
+    this.#startFlip(() => this.drawMenu(recipe, status), dir);
   }
 
-  #startFlip(onMid) {
-    this._flip = { t: 0, dur: 0.9, mid: false, onMid };
+  // dir +1: the right page lifts up and over to the left (turning forward).
+  // dir -1: a page sweeps back from the left over to the right (turning back).
+  #startFlip(onMid, dir = 1) {
+    this._flip = { t: 0, dur: 0.9, mid: false, onMid, dir };
     this.turnPage.visible = true;
-    this.turnPage.rotation.y = 0;
+    this.turnPage.rotation.y = dir === 1 ? 0 : -Math.PI;
   }
 
   update(dt) {
@@ -74,9 +76,9 @@ export class RecipeBook {
     if (!f) return;
     f.t += dt;
     const k = Math.min(f.t / f.dur, 1);
-    // Negative so the free edge lifts UP and over toward the spine (a real page
-    // turn) rather than dipping down through the table.
-    this.turnPage.rotation.y = -Math.PI * k;
+    // Negative rotation lifts the free edge UP over the spine rather than
+    // dipping down through the table; backward flips run the sweep in reverse.
+    this.turnPage.rotation.y = f.dir === 1 ? -Math.PI * k : -Math.PI * (1 - k);
     if (!f.mid && k >= 0.5) { f.mid = true; f.onMid(); }
     if (k >= 1) { this.turnPage.visible = false; this._flip = null; }
   }
@@ -273,11 +275,15 @@ export class RecipeBook {
         y += 66;
       }
 
-      // ◀ browse-left affordance
-      ctx.fillStyle = 'rgba(90,47,20,0.55)';
-      ctx.font = 'bold 72px Georgia, serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('‹', 96, h / 2 + 24);
+      // ◀ browse-left affordance — only when an earlier recipe exists
+      if (status.index > 0) {
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(90,47,20,0.6)';
+        ctx.font = 'bold 96px Georgia, serif';
+        ctx.fillText('‹', 96, h / 2 + 30);
+        ctx.font = 'italic 24px Georgia, serif';
+        ctx.fillText('back', 96, h / 2 + 70);
+      }
       tex.needsUpdate = true;
     }
 
@@ -327,13 +333,17 @@ export class RecipeBook {
         this.#wrap(ctx, `Finish ${status.prevTitle || 'the previous dish'} first`, cx - 120, cy + 16, 260, 30);
       }
 
-      // page indicator + ▶ browse-right affordance
+      // page indicator + ▶ browse-right affordance — only when a later one exists
       ctx.fillStyle = '#8a6b4a';
       ctx.font = 'italic 28px Georgia, serif';
       ctx.fillText(`${status.index + 1} / ${status.total}`, w / 2, h - 90);
-      ctx.fillStyle = 'rgba(90,47,20,0.55)';
-      ctx.font = 'bold 72px Georgia, serif';
-      ctx.fillText('›', w - 96, h / 2 + 24);
+      if (status.index < status.total - 1) {
+        ctx.fillStyle = 'rgba(90,47,20,0.6)';
+        ctx.font = 'bold 96px Georgia, serif';
+        ctx.fillText('›', w - 96, h / 2 + 30);
+        ctx.font = 'italic 24px Georgia, serif';
+        ctx.fillText('next', w - 96, h / 2 + 70);
+      }
       tex.needsUpdate = true;
     }
   }

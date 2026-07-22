@@ -15,6 +15,8 @@ export class Interaction {
     this.rig = engine.rig;
 
     this.grabbables = [];        // Object3D[] tagged with userData.grab
+    this.inspectables = [];      // story objects: touch/click fires onGrab, never held
+    this.isHub = () => true;     // set by main; inspection is hub-only
     this.hands = [];             // active Hand[] (desktop: 1, VR: 2)
     this.grabRadius = 0.16;
     this.pourThreshold = Math.cos(THREE.MathUtils.degToRad(52)); // tilt to pour
@@ -35,10 +37,12 @@ export class Interaction {
       pourable: !!opts.pourable,
       spout: opts.spout || null,          // local offset of the pour lip
       home: opts.home ? object.position.clone() : null,
+      inspect: !!opts.inspect,            // touch-to-reveal story object, never held
       onGrab: opts.onGrab || null,
       onRelease: opts.onRelease || null,
     };
-    this.grabbables.push(object);
+    if (opts.inspect) this.inspectables.push(object);
+    else this.grabbables.push(object);
     return object;
   }
 
@@ -50,6 +54,8 @@ export class Interaction {
     }
     const i = this.grabbables.indexOf(object);
     if (i >= 0) this.grabbables.splice(i, 1);
+    const j = this.inspectables.indexOf(object);
+    if (j >= 0) this.inspectables.splice(j, 1);
   }
 
   // ---- Desktop pointer hand -------------------------------------------------
@@ -88,6 +94,9 @@ export class Interaction {
       if (e.button !== 0) return; // left button = reach & grab
       setPointer(e);
       this._lastY = e.clientY;
+      // Story objects first: click anywhere on one (walls included, beyond the
+      // worktop hand's reach) reveals its memory instead of grabbing.
+      if (this.#tryInspectRay(hand)) return;
       this.#tryGrab(hand);
     });
     const release = (e) => {
@@ -153,8 +162,32 @@ export class Interaction {
     }
   }
 
+  // Desktop: camera-ray pick against inspectables (hub only).
+  #tryInspectRay(hand) {
+    if (!this.isHub() || this.inspectables.length === 0) return false;
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+    const hits = this.raycaster.intersectObjects(this.inspectables, true);
+    if (!hits.length) return false;
+    let o = hits[0].object;
+    while (o && !o.userData.grab) o = o.parent;
+    if (!o?.userData.grab?.inspect) return false;
+    o.userData.grab.onGrab?.(hand);
+    return true;
+  }
+
   #tryGrab(hand) {
     if (hand.held) return;
+    // VR: a grip/pinch near a story object reveals it rather than holding it.
+    if (this.isHub()) {
+      for (const o of this.inspectables) {
+        o.getWorldPosition(this._tmp);
+        if (this._tmp.distanceTo(hand.worldPos) <= 0.14) {
+          o.userData.grab.onGrab?.(hand);
+          this.pulse(hand, 0.3, 25);
+          return;
+        }
+      }
+    }
     let best = null, bestD = Infinity;
     for (const o of this.grabbables) {
       if (o.userData._heldBy) continue;

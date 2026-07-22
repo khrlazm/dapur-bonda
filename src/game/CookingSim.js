@@ -85,19 +85,35 @@ export class CookingSim {
   }
 
   #hubPrompt(recipe, status) {
-    const msg = status.comingSoon
+    let msg = status.comingSoon
       ? 'Coming soon — a future episode. Flip ◀ ▶ to browse the recipes.'
       : status.unlocked
         ? 'Reach into the right page — or press Cook — to begin. Flip ◀ ▶ to browse the recipes.'
         : `Locked — finish ${status.prevTitle} first. Flip ◀ ▶ to browse the recipes.`;
+    if (this.hubStoriesTotal) {
+      msg += ` · Kitchen memories ${this.save.hubStoryCount()}/${this.hubStoriesTotal} — wander, and touch what glimmers.`;
+    }
     this.hud.setStep('❦', recipe.title, msg);
     this.hud.setProgress(0);
+    this.hud.setHubNav?.(status.index > 0, status.index < status.total - 1);
+  }
+
+  // Re-render the hub prompt (e.g. after a kitchen memory is discovered).
+  refreshHubPrompt() {
+    if (this.mode !== 'hub') return;
+    this.#hubPrompt(this.season[this.menuIndex], this.#status(this.menuIndex));
   }
 
   browseMenu(dir) {
     if (this.mode !== 'hub' || this._locked || this.book._flip) return;
-    const n = this.season.length;
-    this.menuIndex = (this.menuIndex + dir + n) % n;
+    // Clamp — no wrap-around. Wrapping made flipping back from Episode 1 land
+    // on Episode 4, which read as the book being out of order (1, 4, 3, 2).
+    const next = this.menuIndex + dir;
+    if (next < 0 || next >= this.season.length) {
+      for (const h of this.interaction.hands) this.interaction.pulse(h, 0.2, 25); // end-of-book nudge
+      return;
+    }
+    this.menuIndex = next;
     const recipe = this.season[this.menuIndex];
     const status = this.#status(this.menuIndex);
     this.book.flipToMenu(recipe, status, dir);

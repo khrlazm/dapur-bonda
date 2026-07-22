@@ -5,11 +5,21 @@ const KEY = 'dapur-bonda-save-v1';
 export const Save = {
   load() {
     try {
-      return JSON.parse(localStorage.getItem(KEY)) || { recipes: {}, memories: [] };
+      return JSON.parse(localStorage.getItem(KEY)) || { recipes: {}, memories: [], hubStories: {} };
     } catch {
-      return { recipes: {}, memories: [] };
+      return { recipes: {}, memories: [], hubStories: {} };
     }
   },
+  // Environmental-storytelling discoveries in the hub kitchen.
+  markHubStory(id) {
+    const s = this.load();
+    s.hubStories = s.hubStories || {};
+    s.hubStories[id] = true;
+    this.save(s);
+    return s;
+  },
+  hasHubStory(id) { return !!this.load().hubStories?.[id]; },
+  hubStoryCount() { return Object.keys(this.load().hubStories || {}).length; },
   save(state) {
     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
   },

@@ -6,6 +6,7 @@ import { Lighting } from './world/Lighting.js';
 import { createSky } from './world/Sky.js';
 import { RecipeBook } from './game/RecipeBook.js';
 import { CookingSim } from './game/CookingSim.js';
+import { HubStories } from './game/HubStories.js';
 import { HUD } from './ui/HUD.js';
 import { WorldPanel } from './ui/WorldPanel.js';
 import * as THREE from 'three/webgpu';
@@ -50,6 +51,11 @@ async function boot() {
 
   const sim = new CookingSim({ engine, kitchen, book, hud, audio, season: season1, save: Save });
 
+  // Explorable hub: story objects scattered through the kitchen. Inspection is
+  // hub-only so glimmers and memory toasts never interrupt cooking.
+  interaction.isHub = () => sim.mode === 'hub';
+  const hubStories = new HubStories({ scene: engine.scene, kitchen, interaction, hud, audio, save: Save, sim });
+
   // HUD buttons
   engine.mountVRButton('xr-slot');
   hud.show();
@@ -84,6 +90,7 @@ async function boot() {
     interaction.update(dt, frame);
     locomotion.update(dt);
     sim.update(dt, t);
+    hubStories.update(dt, t);
     book.update(dt);
     worldPanel.update(t);
   });
