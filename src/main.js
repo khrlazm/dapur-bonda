@@ -5,6 +5,7 @@ import { Kitchen } from './world/Kitchen.js';
 import { Lighting } from './world/Lighting.js';
 import { createSky } from './world/Sky.js';
 import { Environment } from './world/Environment.js';
+import { bakeVertexAO } from './world/bakeAO.js';
 import { RecipeBook } from './game/RecipeBook.js';
 import { CookingSim } from './game/CookingSim.js';
 import { HubStories } from './game/HubStories.js';
@@ -29,6 +30,10 @@ async function boot() {
   const sky = createSky(engine.scene);
   const lighting = new Lighting(engine.scene);
   const kitchen = new Kitchen(engine.scene);
+  // Bake ambient occlusion into the static kitchen's vertex colours (grounds the
+  // room; lighting-independent, so it survives the random weather).
+  setStatus('Baking the light into the walls…');
+  bakeVertexAO(kitchen.aoMeshes);
 
   // Systems
   const interaction = new Interaction(engine);

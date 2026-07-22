@@ -1,6 +1,6 @@
 import * as THREE from 'three/webgpu';
 import {
-  woodTexture, plasterTexture, batikTexture, bananaLeafTexture, weaveTexture,
+  woodTexture, plasterTexture, batikTexture, bananaLeafTexture, weaveTexture, shadowBlob,
 } from './textures.js';
 
 // Builds the traditional kampung kitchen: wooden floor & walls, a shuttered
@@ -15,6 +15,7 @@ export class Kitchen {
 
     this.counterTopY = 0.9;
     this.anchors = {};
+    this.aoMeshes = []; // static surfaces that receive the baked vertex-AO
 
     this.#materials();
     this.#floorAndWalls();
@@ -24,6 +25,7 @@ export class Kitchen {
     this.#stove();
     this.#shelves();
     this.#props();
+    this.#contactShadows();
   }
 
   // The fourth wall behind the player, with a doorway open to the kampung so the
@@ -88,38 +90,40 @@ export class Kitchen {
     };
   }
 
-  #add(mesh, { cast = true, receive = true } = {}) {
+  #add(mesh, { cast = true, receive = true, ao = false } = {}) {
     mesh.castShadow = cast; mesh.receiveShadow = receive;
+    if (ao) this.aoMeshes.push(mesh);
     this.group.add(mesh);
     return mesh;
   }
 
   #floorAndWalls() {
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(9, 9), this.mat.floor);
+    // A denser floor plane so vertex-AO has verts to darken near the walls.
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(9, 9, 18, 18), this.mat.floor);
     floor.rotation.x = -Math.PI / 2;
-    this.#add(floor, { cast: false });
+    this.#add(floor, { cast: false, ao: true });
 
     const wallMat = this.mat.wall;
-    const back = new THREE.Mesh(new THREE.PlaneGeometry(9, 3.2), wallMat);
+    const back = new THREE.Mesh(new THREE.PlaneGeometry(9, 3.2, 12, 8), wallMat);
     back.position.set(0, 1.6, -1.5);
-    this.#add(back, { cast: false });
+    this.#add(back, { cast: false, ao: true });
 
     // Left wall, built as segments around a real window opening (so you can see
     // the sky/sun/moon/rain through it). Opening: z in [-1.45, 0.05] (centre
     // z=-0.7, 1.5 wide), y in [0.85, 2.15] (1.3 tall).
     const seg = (w, h, z, y) => {
-      const s = new THREE.Mesh(new THREE.PlaneGeometry(w, h), wallMat);
+      const s = new THREE.Mesh(new THREE.PlaneGeometry(w, h, Math.max(2, Math.round(w * 2)), Math.max(2, Math.round(h * 2))), wallMat);
       s.position.set(-2.4, y, z); s.rotation.y = Math.PI / 2;
-      this.#add(s, { cast: false });
+      this.#add(s, { cast: false, ao: true });
     };
     seg(9, 0.85, 0.5, 0.425);   // below the window
     seg(9, 1.05, 0.5, 2.675);   // above the window
     seg(2.55, 1.3, -2.725, 1.5); // left of the window (z <= -1.45)
     seg(4.95, 1.3, 2.525, 1.5);  // right of the window (z >= 0.05)
 
-    const right = new THREE.Mesh(new THREE.PlaneGeometry(9, 3.2), wallMat);
+    const right = new THREE.Mesh(new THREE.PlaneGeometry(9, 3.2, 12, 8), wallMat);
     right.position.set(2.4, 1.6, 0.5); right.rotation.y = -Math.PI / 2;
-    this.#add(right, { cast: false });
+    this.#add(right, { cast: false, ao: true });
 
     const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(9, 9), this.mat.woodDark);
     ceiling.position.set(0, 3.2, 0.5); ceiling.rotation.x = Math.PI / 2;
@@ -177,14 +181,14 @@ export class Kitchen {
   }
 
   #counter() {
-    const top = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.08, 0.7), this.mat.wood);
+    const top = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.08, 0.7, 12, 1, 4), this.mat.wood);
     top.position.set(0.1, this.counterTopY, -0.75);
-    this.#add(top);
+    this.#add(top, { ao: true });
 
     // legs / apron
     const apron = new THREE.Mesh(new THREE.BoxGeometry(2.35, 0.5, 0.6), this.mat.woodDark);
     apron.position.set(0.1, this.counterTopY - 0.3, -0.78);
-    this.#add(apron);
+    this.#add(apron, { ao: true });
     for (const [x, z] of [[-1.0, -0.5], [1.15, -0.5], [-1.0, -1.0], [1.15, -1.0]]) {
       const leg = new THREE.Mesh(new THREE.BoxGeometry(0.09, this.counterTopY - 0.06, 0.09), this.mat.woodDark);
       leg.position.set(x + 0.1, (this.counterTopY - 0.06) / 2, z - 0.28);
@@ -206,7 +210,7 @@ export class Kitchen {
     // A simple masonry stove block with an iron ring and a warm ember glow.
     const base = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.7, 0.7), this.mat.wall);
     base.position.set(1.15, 0.35, -0.85);
-    this.#add(base);
+    this.#add(base, { ao: true });
 
     const ring = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.035, 10, 24), this.mat.iron);
     ring.rotation.x = Math.PI / 2;
@@ -231,7 +235,7 @@ export class Kitchen {
       const y = 1.7 + s * 0.55;
       const shelf = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.05, 0.28), shelfMat);
       shelf.position.set(-0.1, y, -1.34);
-      this.#add(shelf);
+      this.#add(shelf, { ao: true });
       // jars of spices
       for (let j = 0; j < 5; j++) {
         const jar = new THREE.Mesh(
@@ -308,6 +312,28 @@ export class Kitchen {
       this.#add(blade);
     }
     this.anchors.pandan = potPos.clone().setY(tableTop + 0.15);
+  }
+
+  // Soft fake contact shadows on the floor under the furniture (real shadows are
+  // off for performance; these ground everything under any lighting).
+  #contactShadows() {
+    const tex = shadowBlob();
+    const blob = (x, z, sx, sz, opacity = 0.85) => {
+      const m = new THREE.Mesh(
+        new THREE.PlaneGeometry(sx, sz),
+        new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity, depthWrite: false, fog: true, color: 0x000000 }),
+      );
+      m.rotation.x = -Math.PI / 2;
+      m.position.set(x, 0.012, z);
+      m.renderOrder = 1;
+      this.group.add(m);
+    };
+    blob(0.1, -0.62, 2.9, 1.3);     // under the worktop
+    blob(1.15, -0.82, 1.15, 1.05);  // under the stove
+    blob(-2.14, -0.05, 0.85, 0.85); // under the side table
+    blob(-1.7, 0.4, 0.75, 0.75);    // baskets
+    blob(-1.4, 0.9, 0.6, 0.6);
+    blob(1.8, 0.5, 0.8, 0.8);
   }
 
   update(t) {

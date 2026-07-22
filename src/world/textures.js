@@ -174,6 +174,24 @@ export function weaveTexture() {
   return tex;
 }
 
+// Soft radial blob for fake contact shadows under furniture/props.
+export function shadowBlob() {
+  if (cache.has('shadowBlob')) return cache.get('shadowBlob');
+  const s = 128;
+  const canvas = makeCanvas(s);
+  const ctx = canvas.getContext('2d');
+  const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+  g.addColorStop(0, 'rgba(0,0,0,0.55)');
+  g.addColorStop(0.55, 'rgba(0,0,0,0.28)');
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, s, s);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  cache.set('shadowBlob', tex);
+  return tex;
+}
+
 // Parchment for the recipe book pages (returns a canvas so pages can be drawn on).
 export function parchmentCanvas(w = 1024, h = 1024) {
   const canvas = document.createElement('canvas');
