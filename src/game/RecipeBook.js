@@ -45,6 +45,9 @@ export class RecipeBook {
     this.draw({ steps: {} }, 0);
   }
 
+  // Reposition the book (the hub puts it centre-counter; cooking moves it aside).
+  moveTo(position) { this.group.position.copy(position); }
+
   // Swap to a recipe's cooking spread (the ticking checklist).
   setRecipe(recipe, save = { steps: {} }, index = 0, memory) {
     this.menuMode = false;
@@ -71,7 +74,9 @@ export class RecipeBook {
     if (!f) return;
     f.t += dt;
     const k = Math.min(f.t / f.dur, 1);
-    this.turnPage.rotation.y = Math.PI * k; // 0 (over right page) -> PI (over left)
+    // Negative so the free edge lifts UP and over toward the spine (a real page
+    // turn) rather than dipping down through the table.
+    this.turnPage.rotation.y = -Math.PI * k;
     if (!f.mid && k >= 0.5) { f.mid = true; f.onMid(); }
     if (k >= 1) { this.turnPage.visible = false; this._flip = null; }
   }

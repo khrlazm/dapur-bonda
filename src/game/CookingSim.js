@@ -1,6 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { Steam } from '../fx/Steam.js';
 import { Pour } from '../fx/Pour.js';
+import { Fader } from '../core/Fader.js';
 import { PulutKuning } from './episodes/PulutKuning.js';
 import { PisangSira } from './episodes/PisangSira.js';
 
@@ -35,9 +36,14 @@ export class CookingSim {
 
     this.pour = new Pour(this.scene);
     this.steam = new Steam(this.scene, new THREE.Vector3(0, kitchen.counterTopY + 0.1, -0.72), { count: 80 });
+    this.fader = new Fader(this.engine.camera);
     this.interaction.onPour = (o, dt, spout) => this.episode?.handlePour?.(o, dt, spout);
 
-    this.enterHub(false, 0);
+    // The book sits centre-counter in the hub, and moves aside while cooking.
+    this.hubBookPos = new THREE.Vector3(0.1, kitchen.counterTopY + 0.04, -0.66);
+    this.cookBookPos = kitchen.anchors.book.clone();
+
+    this.enterHub(0);
   }
 
   // ---------- Status / unlock logic ----------
@@ -49,7 +55,9 @@ export class CookingSim {
   }
 
   // ---------- Hub ----------
-  enterHub(animate, preferredIndex) {
+  // Called at full-black during a fade (or once at boot), so it just resets the
+  // scene: tears down the episode, centres the book, and shows the menu.
+  enterHub(preferredIndex) {
     this._locked = true;
     clearTimeout(this._returnTimer);
     this.episode?.teardown?.();
@@ -59,12 +67,12 @@ export class CookingSim {
     this.progress = 0;
     this.steam.setIntensity(0);
     this._pokeCd = 0.7;
+    this.book.moveTo(this.hubBookPos);
 
     this.menuIndex = Math.min(preferredIndex ?? this.menuIndex ?? 0, this.season.length - 1);
     const recipe = this.season[this.menuIndex];
     const status = this.#status(this.menuIndex);
-    if (animate) this.book.flipToMenu(recipe, status);
-    else this.book.drawMenu(recipe, status);
+    this.book.drawMenu(recipe, status);
     this.#hubPrompt(recipe, status);
     this.hud.setHubControls(true);
     this._locked = false;
@@ -99,14 +107,20 @@ export class CookingSim {
   }
 
   // ---------- Cooking ----------
+  // Fade to black, build the recipe's scene at full-black, then fade in.
   startRecipe(idx) {
-    this.mode = 'cooking';
+    if (this.fader.busy) return;
+    this._locked = true;
     this.hud.setHubControls(false);
     this.save.resetSteps(this.season[idx].id); // always a fresh cook
-    this.loadEpisode(idx, { animateBook: true, fresh: true });
+    this.fader.start(() => {
+      this.mode = 'cooking';
+      this.book.moveTo(this.cookBookPos);
+      this.loadEpisode(idx, { fresh: true });
+    });
   }
 
-  loadEpisode(idx, { animateBook = false, fresh = false } = {}) {
+  loadEpisode(idx, { fresh = false } = {}) {
     this._locked = true;
     this.episode?.teardown?.();
 
@@ -127,10 +141,7 @@ export class CookingSim {
     this.done = false;
     if (!fresh) this.episode.restore?.(rec);
 
-    const bookSave = fresh ? { steps: {} } : (rec || { steps: {} });
-    if (animateBook) this.book.flipToRecipe(this.recipe, bookSave, this.stepIndex);
-    else this.book.setRecipe(this.recipe, bookSave, this.stepIndex);
-
+    this.book.setRecipe(this.recipe, fresh ? { steps: {} } : (rec || { steps: {} }), this.stepIndex);
     this.#enterStep(this.stepIndex);
     this._locked = false;
   }
@@ -169,16 +180,19 @@ export class CookingSim {
     if (!wasComplete && nextIdx < this.season.length) {
       this.hud.toast(`New recipe unlocked — ${this.season[nextIdx].title}`);
     }
-    // pause on the closing memory, then return to the hub (showing the next dish)
+    // pause on the closing memory, then fade to black and return to the hub
+    // (showing the next dish).
     const back = Math.min(nextIdx, this.season.length - 1);
     clearTimeout(this._returnTimer);
-    this._returnTimer = setTimeout(() => this.enterHub(true, back), 5200);
+    this._returnTimer = setTimeout(() => this.fader.start(() => this.enterHub(back)), 5200);
   }
 
   // ---------- Per-frame ----------
   update(dt, t) {
+    this.fader.update(dt);
     this.pour.update(dt);
     this.steam.update(dt, t);
+    if (this.fader.busy) return; // gameplay paused during a fade transition
 
     if (this.mode === 'hub') { this.#hubUpdate(dt); return; }
     if (this.done || this._locked) return;
