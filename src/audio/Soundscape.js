@@ -22,6 +22,7 @@ export class Soundscape {
     this.#wind();
     this.#cicadas();
     this.#scheduleBirds();
+    this.#music();
     this.ready = true;
   }
 
@@ -189,5 +190,102 @@ export class Soundscape {
         setTimeout(() => { try { src.stop(); } catch {} }, 400);
       },
     };
+  }
+
+  // ---- Tintinnabuli soundtrack ----
+  // A warm, sparse Arvo Pärt-style bed: a melodic voice steps through F major
+  // while a "tintinnabuli" voice sounds the nearest note of the tonic triad,
+  // over a soft breathing drone. Bell-like, consoling, and quiet enough to sit
+  // under the kampung ambience. Generative — it never loops or repeats exactly.
+  #music() {
+    const ctx = this.ctx;
+    this.musicMel = 174.61; // F3, the melody's lowest note
+    this._mIndex = 4;
+
+    this.musicGain = ctx.createGain();
+    this.musicGain.gain.value = 0.0001;
+    this.musicGain.gain.setTargetAtTime(0.6, ctx.currentTime, 6); // slow fade-in
+
+    // Convolution reverb from a synthesized decaying-noise impulse for warmth.
+    const conv = ctx.createConvolver();
+    const len = ctx.sampleRate * 3.2;
+    const ir = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = ir.getChannelData(ch);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6);
+    }
+    conv.buffer = ir;
+    const wet = ctx.createGain(); wet.gain.value = 0.55;
+    this.musicGain.connect(this.master);        // dry
+    this.musicGain.connect(conv); conv.connect(wet); wet.connect(this.master); // wet
+
+    this.#drone();
+    this.#scheduleMusic();
+  }
+
+  #drone() {
+    const ctx = this.ctx;
+    const root = this.musicMel / 2; // F2
+    [root, root * 1.5].forEach((f, i) => { // root + fifth
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f;
+      const g = ctx.createGain(); g.gain.value = i === 0 ? 0.06 : 0.035;
+      const lfo = ctx.createOscillator(); lfo.frequency.value = 0.05 + i * 0.03;
+      const lg = ctx.createGain(); lg.gain.value = 0.02;
+      lfo.connect(lg); lg.connect(g.gain);
+      o.connect(g); g.connect(this.musicGain);
+      o.start(); lfo.start();
+    });
+  }
+
+  // A soft bell/celesta-ish tone with a slow swell and long tail.
+  #tone(freq, dur, gain) {
+    const ctx = this.ctx, t = ctx.currentTime;
+    const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = freq;
+    const shimmer = ctx.createOscillator(); shimmer.type = 'sine'; shimmer.frequency.value = freq * 2.001;
+    const sg = ctx.createGain(); sg.gain.value = 0.28;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2000;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(gain, t + 0.12);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); shimmer.connect(sg); sg.connect(g); g.connect(lp); lp.connect(this.musicGain);
+    o.start(t); shimmer.start(t); o.stop(t + dur + 0.3); shimmer.stop(t + dur + 0.3);
+  }
+
+  #scheduleMusic() {
+    const step = () => {
+      if (!this.ready) return;
+      if (!this.muted) this.#phraseNote();
+      this._musicTimer = setTimeout(step, 1700 + Math.random() * 1700);
+    };
+    this._musicTimer = setTimeout(step, 2000);
+  }
+
+  #phraseNote() {
+    const scale = [0, 2, 4, 5, 7, 9, 11]; // major scale semitone offsets
+    const r = Math.random();
+    if (r < 0.14) return; // a rest — space is part of the music
+    let d = r < 0.64 ? (Math.random() < 0.5 ? 1 : -1)   // mostly stepwise
+      : r < 0.84 ? (Math.random() < 0.5 ? 2 : -2)       // occasional leap
+        : 0;                                             // or a repeated note
+    this._mIndex += d;
+    if (this._mIndex < 0) this._mIndex = 1;
+    if (this._mIndex > 12) this._mIndex = 11;            // ~1.8 octaves
+
+    const toFreq = (idx) => this.musicMel * Math.pow(2, (scale[((idx % 7) + 7) % 7] + 12 * Math.floor(idx / 7)) / 12);
+    const mFreq = toFreq(this._mIndex);
+
+    // Tintinnabuli voice: nearest tonic-triad note (scale degrees 0,2,4),
+    // superior (above) or inferior (below) the melody note.
+    const triad = [0, 2, 4];
+    const superior = Math.random() < 0.6;
+    let tIndex = this._mIndex;
+    for (let k = 1; k <= 7; k++) {
+      const cand = this._mIndex + (superior ? k : -k);
+      if (triad.includes(((cand % 7) + 7) % 7)) { tIndex = cand; break; }
+    }
+    const dur = 2.4 + Math.random() * 1.8;
+    this.#tone(mFreq, dur, 0.09);
+    this.#tone(toFreq(tIndex), dur * 0.9, 0.06);
   }
 }
