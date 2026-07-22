@@ -1,4 +1,5 @@
 import * as THREE from 'three/webgpu';
+import { grain } from '../world/textures.js';
 
 // Environmental storytelling for the hub. The kitchen holds nine small objects
 // — a photo, a radio, Atok's songkok, a biscuit tin that betrays every
@@ -201,6 +202,7 @@ export class HubStories {
     const c = document.createElement('canvas');
     c.width = pxW; c.height = pxH;
     draw(c.getContext('2d'), pxW, pxH);
+    grain(c.getContext('2d'), pxW, pxH, 14); // aged photo/postcard grain
     const tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = 4;

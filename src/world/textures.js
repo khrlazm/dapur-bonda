@@ -11,7 +11,23 @@ function makeCanvas(size = 512) {
   return c;
 }
 
-function finalize(canvas, { repeat = 1, srgb = true } = {}) {
+// Fine monochrome film grain baked into every texture for a hand-painted, aged
+// feel. Perturbs each pixel's luminance by ±amount.
+export function grain(ctx, w, h, amount = 16) {
+  if (amount <= 0) return;
+  const img = ctx.getImageData(0, 0, w, h);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const n = (Math.random() - 0.5) * 2 * amount;
+    d[i] = Math.min(255, Math.max(0, d[i] + n));
+    d[i + 1] = Math.min(255, Math.max(0, d[i + 1] + n));
+    d[i + 2] = Math.min(255, Math.max(0, d[i + 2] + n));
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function finalize(canvas, { repeat = 1, srgb = true, grainAmount = 16 } = {}) {
+  grain(canvas.getContext('2d'), canvas.width, canvas.height, grainAmount);
   const tex = new THREE.CanvasTexture(canvas);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   tex.repeat.set(repeat, repeat);
@@ -220,5 +236,6 @@ export function parchmentCanvas(w = 1024, h = 1024) {
   eg.addColorStop(1, 'rgba(90,60,30,0.22)');
   ctx.fillStyle = eg;
   ctx.fillRect(0, 0, w, h);
+  grain(ctx, w, h, 12); // paper grain (text is drawn over this later, stays crisp)
   return canvas;
 }
