@@ -81,22 +81,46 @@ export class CookingSim {
     this.book.moveTo(this.hubBookPos);
     this.environment?.randomize(); // fresh time-of-day + weather for the hub
 
-    this.menuIndex = Math.min(preferredIndex ?? this.menuIndex ?? 0, this.season.length - 1);
-    const recipe = this.season[this.menuIndex];
-    const status = this.#status(this.menuIndex);
-    this.book.drawMenu(recipe, status);
-    this.#hubPrompt(recipe, status);
+    this.menuIndex = Math.min(preferredIndex ?? this.menuIndex ?? 0, this.#totalPages() - 1);
+    this.#showPage(this.menuIndex, {});
     this.hud.setHubControls(true);
     this.hud.setCookingControls(false);
     this._locked = false;
   }
 
+  // The book browses recipes (0..season.length-1) then memory pages after them.
+  #memPages() { return Math.max(1, Math.ceil(this.save.load().memories.length / 10)); }
+  #totalPages() { return this.season.length + this.#memPages(); }
+
+  // Render the page at `index` (recipe menu or memories), optionally as a flip.
+  #showPage(index, { flip = false, dir = 1 } = {}) {
+    this.menuIndex = index;
+    const memPage = index - this.season.length;
+    const total = this.#totalPages();
+    if (memPage < 0) {
+      const recipe = this.season[index];
+      const status = this.#status(index);
+      status.total = total; // book's ‹/› affordances span the whole book
+      if (flip) this.book.flipToMenu(recipe, status, dir); else this.book.drawMenu(recipe, status);
+      this.#hubPrompt(recipe, status);
+    } else {
+      const mem = this.save.load().memories;
+      const mp = this.#memPages();
+      const draw = () => this.book.drawMemories(mem, memPage, mp, memPage < mp - 1);
+      if (flip) this.book.flip(draw, dir); else draw();
+      this.hud.setStep('❦ Memories', 'Kitchen Memories',
+        `${mem.length} gathered — the stories you’ve been given. Flip ◀ back to the recipes${memPage < mp - 1 ? ', ▶ for more' : ''}.`);
+      this.hud.setProgress(0);
+      this.hud.setHubNav?.(index > 0, index < total - 1);
+    }
+  }
+
   #hubPrompt(recipe, status) {
     let msg = status.comingSoon
-      ? 'Coming soon — a future episode. Flip ◀ ▶ to browse the recipes.'
+      ? 'Coming soon — a future episode. Flip ◀ ▶ to browse; keep flipping for your Memories.'
       : status.unlocked
-        ? 'Reach into the right page — or press Cook — to begin. Flip ◀ ▶ to browse the recipes.'
-        : `Locked — finish ${status.prevTitle} first. Flip ◀ ▶ to browse the recipes.`;
+        ? 'Reach into the right page — or press Cook — to begin. Flip ◀ ▶ to browse; keep flipping for your Memories.'
+        : `Locked — finish ${status.prevTitle} first. Flip ◀ ▶ to browse; keep flipping for your Memories.`;
     if (this.hubStoriesTotal) {
       msg += ` · Kitchen memories ${this.save.hubStoryCount()}/${this.hubStoriesTotal} — wander, and touch what glimmers.`;
     }
@@ -106,30 +130,26 @@ export class CookingSim {
     this.hud.setHubNav?.(status.index > 0, status.index < status.total - 1);
   }
 
-  // Re-render the hub prompt (e.g. after a kitchen memory is discovered).
+  // Re-render the current page (e.g. after a kitchen memory is discovered).
   refreshHubPrompt() {
-    if (this.mode !== 'hub') return;
-    this.#hubPrompt(this.season[this.menuIndex], this.#status(this.menuIndex));
+    if (this.mode !== 'hub' || this.book._flip) return;
+    this.#showPage(this.menuIndex, {});
   }
 
   browseMenu(dir) {
     if (this.mode !== 'hub' || this._locked || this.book._flip) return;
-    // Clamp — no wrap-around. Wrapping made flipping back from Episode 1 land
-    // on Episode 4, which read as the book being out of order (1, 4, 3, 2).
+    // Clamp — no wrap-around (wrapping read as the book being out of order).
     const next = this.menuIndex + dir;
-    if (next < 0 || next >= this.season.length) {
+    if (next < 0 || next >= this.#totalPages()) {
       for (const h of this.interaction.hands) this.interaction.pulse(h, 0.2, 25); // end-of-book nudge
       return;
     }
-    this.menuIndex = next;
-    const recipe = this.season[this.menuIndex];
-    const status = this.#status(this.menuIndex);
-    this.book.flipToMenu(recipe, status, dir);
-    this.#hubPrompt(recipe, status);
+    this.#showPage(next, { flip: true, dir });
   }
 
   selectMenu() {
     if (this.mode !== 'hub' || this._locked || this.book._flip) return;
+    if (this.menuIndex >= this.season.length) return; // a memories page — nothing to cook
     const status = this.#status(this.menuIndex);
     if (!status.unlocked) {
       for (const h of this.interaction.hands) this.interaction.pulse(h, 0.4, 40); // "locked" buzz

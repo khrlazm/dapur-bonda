@@ -63,6 +63,9 @@ export class RecipeBook {
     this.#startFlip(() => this.drawMenu(recipe, status), dir);
   }
 
+  // Flip with an arbitrary mid-turn draw (used for the memories pages).
+  flip(drawFn, dir = 1) { this.#startFlip(drawFn, dir); }
+
   // dir +1: the right page lifts up and over to the left (turning forward).
   // dir -1: a page sweeps back from the left over to the right (turning back).
   #startFlip(onMid, dir = 1) {
@@ -354,6 +357,66 @@ export class RecipeBook {
         ctx.fillText('›', w - 96, h / 2 + 30);
         ctx.font = 'italic 24px Georgia, serif';
         ctx.fillText('next', w - 96, h / 2 + 70);
+      }
+      tex.needsUpdate = true;
+    }
+  }
+
+  // The heirloom "memories" spread: every family story gathered so far, five per
+  // page across the two pages, paginated. `hasNext` = another memory page after.
+  drawMemories(memories, page = 0, totalPages = 1, hasNext = false) {
+    this.menuMode = true;
+    const PER_PAGE = 5;
+    const startL = page * PER_PAGE * 2;
+
+    const list = (side, items, header) => {
+      const { ctx, base, tex, canvas } = side;
+      ctx.drawImage(base, 0, 0);
+      const w = canvas.width, h = canvas.height;
+      this.#border(ctx, w, h);
+      ctx.textBaseline = 'alphabetic';
+      let y = 150;
+      if (header) {
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#5a2f14'; ctx.font = 'italic 66px Georgia, serif';
+        ctx.fillText('Kitchen Memories', w / 2, 130);
+        ctx.fillStyle = '#8a6b3a'; ctx.font = 'italic 28px Georgia, serif';
+        ctx.fillText(`${memories.length} gathered`, w / 2, 178);
+        y = 260;
+      }
+      ctx.textAlign = 'left';
+      if (items.length === 0 && header) {
+        ctx.fillStyle = '#8a6b4a'; ctx.font = 'italic 30px Georgia, serif';
+        this.#wrap(ctx, 'Your memories will gather here as you cook each dish and touch each corner of Bonda’s kitchen.', 120, y + 40, w - 240, 42);
+      }
+      for (const m of items) {
+        ctx.fillStyle = '#7a2d2d'; ctx.font = '30px Georgia, serif'; ctx.fillText('❦', 108, y);
+        ctx.fillStyle = '#4a2f1a'; ctx.font = 'italic 29px Georgia, serif';
+        const ny = this.#wrap(ctx, m.replace(/[“”]/g, '"'), 150, y, w - 250, 36);
+        y = ny + 52;
+      }
+      return { ctx, tex, w, h };
+    };
+
+    // left page (with the header) + ‹ back affordance (recipes precede memories)
+    {
+      const { ctx, tex, w, h } = list(this.left, memories.slice(startL, startL + PER_PAGE), true);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(90,47,20,0.6)'; ctx.font = 'bold 96px Georgia, serif';
+      ctx.fillText('‹', 96, h / 2 + 30);
+      ctx.font = 'italic 24px Georgia, serif'; ctx.fillText('recipes', 96, h / 2 + 70);
+      tex.needsUpdate = true;
+    }
+    // right page + page indicator + › next (if more memory pages)
+    {
+      const { ctx, tex, w, h } = list(this.right, memories.slice(startL + PER_PAGE, startL + PER_PAGE * 2), false);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#8a6b4a'; ctx.font = 'italic 28px Georgia, serif';
+      ctx.fillText(`memories · ${page + 1} / ${totalPages}`, w / 2, h - 90);
+      if (hasNext) {
+        ctx.fillStyle = 'rgba(90,47,20,0.6)'; ctx.font = 'bold 96px Georgia, serif';
+        ctx.fillText('›', w - 96, h / 2 + 30);
+        ctx.font = 'italic 24px Georgia, serif'; ctx.fillText('more', w - 96, h / 2 + 70);
       }
       tex.needsUpdate = true;
     }
